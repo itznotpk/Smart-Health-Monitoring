@@ -1,5 +1,7 @@
 ## Dataset
 
+https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset
+
 The model is trained on `health_multiclass_dataset.csv`, which should contain the following columns:
 
 - **HeartRate**: Heart rate in beats per minute (bpm).
