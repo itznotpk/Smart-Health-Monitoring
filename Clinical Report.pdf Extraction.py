@@ -41,6 +41,7 @@ html_page = """
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .guideline-box { border: 1px solid #ddd; padding: 10px; margin: 10px auto; width: 80%; }
+        .null-cell { background-color: #cccccc; }
     </style>
 </head>
 <body>
@@ -60,6 +61,39 @@ html_page = """
         </div>
         <table>
             <tr><th>Metric</th><th>Category</th><th>Value</th><th>Unit</th><th>Status</th></tr>
+            {% if 'age' in diagnosis %}
+            <tr>
+                <td>Age</td>
+                <td>{{ diagnosis.age.category }}</td>
+                <td>{{ diagnosis.age.value }}</td>
+                <td>{{ diagnosis.age.unit }}</td>
+                <td class="{{ diagnosis.age.color }}">{{ diagnosis.age.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td>Age</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
+            {% if 'sex' in diagnosis %}
+            <tr>
+                <td>Sex</td>
+                <td>{{ diagnosis.sex.category }}</td>
+                <td>{{ diagnosis.sex.value }}</td>
+                <td>{{ diagnosis.sex.unit }}</td>
+                <td class="{{ diagnosis.sex.color }}">{{ diagnosis.sex.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td>Sex</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
+            {% if 'bmi' in diagnosis %}
+            <tr>
+                <td>BMI</td>
+                <td>{{ diagnosis.bmi.category }}</td>
+                <td>{{ diagnosis.bmi.value | round(1) }}</td>
+                <td>{{ diagnosis.bmi.unit }}</td>
+                <td class="{{ diagnosis.bmi.color }}">{{ diagnosis.bmi.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td>BMI</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
             {% if 'glucose' in diagnosis %}
             <tr>
                 <td rowspan="2">Glucose</td>
@@ -88,6 +122,19 @@ html_page = """
             {% endif %}
         </table>
         <div class="guideline-box">
+            <h3>BMI Benchmarks (kg/m²)</h3>
+            <table>
+                <tr><th>Status</th><th>Range</th></tr>
+                <tr><td>Underweight</td><td>&lt;18.5</td></tr>
+                <tr><td>Normal range</td><td>18.5-24.9</td></tr>
+                <tr><td>Overweight</td><td>&ge;25.0</td></tr>
+                <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
+                <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
+                <tr><td>Obese class II</td><td>35.0-39.9</td></tr>
+                <tr><td>Obese class III</td><td>&ge;40.0</td></tr>
+            </table>
+        </div>
+        <div class="guideline-box">
             <h3>Glucose Benchmarks (mmol/L)</h3>
             <table>
                 <tr><th>Category</th><th>Normal</th><th>Prediabetes</th><th>T2DM Diagnosis</th></tr>
@@ -115,9 +162,7 @@ html_page = """
     </div>
     <script>
         function showLoading() {
-            const button = document.querySelector('button[type="submit"]');
-            button.innerText = 'Analyzing...';
-            button.disabled = true;
+            document.querySelector('button[type="submit"]').innerText = 'Analyzing...';
         }
     </script>
 </body>
@@ -165,6 +210,46 @@ def home():
                 if not text.strip():
                     error = "No text found in the PDF."
                     return render_template_string(html_page, error=error)
+
+                # Parse age
+                age_match = re.search(r'(age|Age|AGE)\s*[:=]?\s*(\d+)\s*(years|Years|YEARS)?', text, re.IGNORECASE)
+                if age_match:
+                    age_value = int(age_match.group(2))
+                    diagnosis['age'] = {'value': age_value, 'unit': 'Years', 'category': '-', 'status': '', 'color': ''}
+
+                # Parse sex
+                sex_match = re.search(r'(sex|Sex|SEX|gender|Gender|GENDER)\s*[:=]?\s*(male|female|m|f)', text, re.IGNORECASE)
+                if sex_match:
+                    sex_value = sex_match.group(2).lower()
+                    if sex_value in ['m', 'male']:
+                        sex_value = 'Male'
+                    elif sex_value in ['f', 'female']:
+                        sex_value = 'Female'
+                    diagnosis['sex'] = {'value': sex_value, 'unit': '-', 'category': '-', 'status': '', 'color': ''}
+
+                # Parse BMI
+                bmi_match = re.search(r'(bmi|BMI|Body Mass Index)\s*[:=]?\s*(\d+\.?\d*)\s*(kg/m²|kg/sqm)?', text, re.IGNORECASE)
+                if bmi_match:
+                    bmi_value = float(bmi_match.group(2))
+                    diagnosis['bmi'] = {'value': bmi_value, 'unit': 'kg/m²', 'category': '-', 'status': '', 'color': ''}
+                    if bmi_value < 18.5:
+                        diagnosis['bmi']['status'] = 'Underweight'
+                        diagnosis['bmi']['color'] = 'orange'
+                    elif 18.5 <= bmi_value <= 24.9:
+                        diagnosis['bmi']['status'] = 'Normal range'
+                        diagnosis['bmi']['color'] = 'green'
+                    elif 25.0 <= bmi_value <= 29.9:
+                        diagnosis['bmi']['status'] = 'Pre-obese'
+                        diagnosis['bmi']['color'] = 'orange'
+                    elif 30.0 <= bmi_value <= 34.9:
+                        diagnosis['bmi']['status'] = 'Obese class I'
+                        diagnosis['bmi']['color'] = 'red'
+                    elif 35.0 <= bmi_value <= 39.9:
+                        diagnosis['bmi']['status'] = 'Obese class II'
+                        diagnosis['bmi']['color'] = 'red'
+                    else:
+                        diagnosis['bmi']['status'] = 'Obese class III'
+                        diagnosis['bmi']['color'] = 'red'
 
                 # Find specimen type
                 specimen_match = re.search(r'Specimen Type\s*[:=]?\s*(fasting|random)', text, re.IGNORECASE)
@@ -272,8 +357,12 @@ def home():
                         diagnosis['hba1c']['color'] = 'red'
 
                 if diagnosis:
-                    # Determine overall result based on worst status
-                    statuses = [d['status'] for d in diagnosis.values()]
+                    # Determine overall result based on worst status (only for glucose and hba1c)
+                    statuses = []
+                    if 'glucose' in diagnosis:
+                        statuses.append(diagnosis['glucose']['status'])
+                    if 'hba1c' in diagnosis:
+                        statuses.append(diagnosis['hba1c']['status'])
                     if any('Diabetes' in s for s in statuses):
                         overall_result = 'Diabetes Indicated'
                         overall_color = 'red'
