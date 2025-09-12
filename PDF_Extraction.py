@@ -115,7 +115,9 @@ html_page = """
     </div>
     <script>
         function showLoading() {
-            document.querySelector('button[type="submit"]').innerText = 'Analyzing...';
+            const button = document.querySelector('button[type="submit"]');
+            button.innerText = 'Analyzing...';
+            button.disabled = true;
         }
     </script>
 </body>
