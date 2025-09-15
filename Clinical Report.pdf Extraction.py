@@ -30,13 +30,14 @@ html_page = """
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f8f9fa; }
         .container { margin-top: 30px; }
-        input { margin: 8px; padding: 8px; }
+        input, select { margin: 8px; padding: 8px; }
         button { padding: 10px 20px; margin-top: 15px; }
         .result { font-size: 22px; margin-top: 20px; font-weight: bold; }
         .explanation { font-size: 16px; margin-top: 10px; }
         .green { color: green; }
         .red { color: red; }
         .orange { color: orange; }
+        .black { color: black; }
         table { margin: 20px auto; border-collapse: collapse; width: 80%; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
@@ -51,6 +52,21 @@ html_page = """
         <form method="post" enctype="multipart/form-data" onsubmit="showLoading()">
             <label for="file">Upload Clinical Report (PDF):</label><br>
             <input type="file" name="file" accept=".pdf" required><br>
+            <label for="heart_diseases">Heart Diseases (past/current):</label><br>
+            <select name="heart_diseases" required>
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select><br>
+            <label for="smoking_history">Smoking History:</label><br>
+            <select name="smoking_history" required>
+                <option value="">Select</option>
+                <option value="No Info">No Info</option>
+                <option value="never">never</option>
+                <option value="former">former</option>
+                <option value="current">current</option>
+                <option value="not current">not current</option>
+            </select><br>
             <button type="submit">Analyze Report</button>
         </form>
         <button onclick="location.reload();">Refresh and Reupload</button>
@@ -94,6 +110,39 @@ html_page = """
             {% else %}
             <tr><td>BMI</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
             {% endif %}
+            {% if 'heart_diseases' in diagnosis %}
+            <tr>
+                <td>Heart Diseases</td>
+                <td>{{ diagnosis.heart_diseases.category }}</td>
+                <td>-</td>
+                <td>{{ diagnosis.heart_diseases.unit }}</td>
+                <td class="{{ diagnosis.heart_diseases.color }}">{{ diagnosis.heart_diseases.value }}</td>
+            </tr>
+            {% else %}
+            <tr><td>Heart Diseases</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
+            {% if 'smoking_history' in diagnosis %}
+            <tr>
+                <td>Smoking History</td>
+                <td>{{ diagnosis.smoking_history.category }}</td>
+                <td>-</td>
+                <td>{{ diagnosis.smoking_history.unit }}</td>
+                <td class="{{ diagnosis.smoking_history.color }}">{{ diagnosis.smoking_history.value }}</td>
+            </tr>
+            {% else %}
+            <tr><td>Smoking History</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
+            {% if 'hypertension' in diagnosis %}
+            <tr>
+                <td>Hypertension</td>
+                <td>{{ diagnosis.hypertension.category }}</td>
+                <td>{{ diagnosis.hypertension.value }}</td>
+                <td>{{ diagnosis.hypertension.unit }}</td>
+                <td class="{{ diagnosis.hypertension.color }}">{{ diagnosis.hypertension.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td>Hypertension</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+            {% endif %}
             {% if 'glucose' in diagnosis %}
             <tr>
                 <td rowspan="2">Glucose</td>
@@ -121,6 +170,16 @@ html_page = """
             </tr>
             {% endif %}
         </table>
+        <div class="guideline-box">
+            <h3>Hypertension Benchmarks (mmHg)</h3>
+            <table>
+                <tr><th>Status</th><th>Range</th></tr>
+                <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
+                <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
+                <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
+                <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
+            </table>
+        </div>
         <div class="guideline-box">
             <h3>BMI Benchmarks (kg/m²)</h3>
             <table>
@@ -186,6 +245,13 @@ def home():
             error = "No selected file"
             return render_template_string(html_page, error=error)
 
+        heart_diseases = request.form.get('heart_diseases')
+        smoking_history = request.form.get('smoking_history')
+
+        if not heart_diseases or not smoking_history:
+            error = "Please select options for Heart Diseases and Smoking History."
+            return render_template_string(html_page, error=error)
+
         if file and allowed_file(file.filename):
             if len(file.read()) > app.config['MAX_CONTENT_LENGTH']:
                 error = "File too large. Maximum size is 10MB."
@@ -210,6 +276,10 @@ def home():
                 if not text.strip():
                     error = "No text found in the PDF."
                     return render_template_string(html_page, error=error)
+
+                # Add user inputs with status coloring
+                diagnosis['heart_diseases'] = {'value': heart_diseases, 'unit': '-', 'category': '-', 'status': '', 'color': 'red' if heart_diseases == 'Yes' else 'green'}
+                diagnosis['smoking_history'] = {'value': smoking_history, 'unit': '-', 'category': '-', 'status': '', 'color': 'black' if smoking_history == 'No Info' else 'green' if smoking_history == 'never' else 'orange' if smoking_history in ['former', 'not current'] else 'red'}
 
                 # Parse age
                 age_match = re.search(r'(age|Age|AGE)\s*[:=]?\s*(\d+)\s*(years|Years|YEARS)?', text, re.IGNORECASE)
@@ -250,6 +320,26 @@ def home():
                     else:
                         diagnosis['bmi']['status'] = 'Obese class III'
                         diagnosis['bmi']['color'] = 'red'
+
+                # Parse Hypertension (Blood Pressure)
+                bp_match = re.search(r'(blood pressure|Blood Pressure|BLOOD PRESSURE)\s*[:=]?\s*(\d+)\s*/\s*(\d+)\s*mmHg', text, re.IGNORECASE)
+                if bp_match:
+                    systolic = int(bp_match.group(2))
+                    diastolic = int(bp_match.group(3))
+                    bp_value = f"{systolic}/{diastolic}"
+                    diagnosis['hypertension'] = {'value': bp_value, 'unit': 'mmHg', 'category': '-', 'status': '', 'color': ''}
+                    if systolic < 120 and diastolic < 80:
+                        diagnosis['hypertension']['status'] = 'Normal'
+                        diagnosis['hypertension']['color'] = 'green'
+                    elif (120 <= systolic <= 139 or 80 <= diastolic <= 89):
+                        diagnosis['hypertension']['status'] = 'Elevated/Prehypertension'
+                        diagnosis['hypertension']['color'] = 'orange'
+                    elif (140 <= systolic <= 159 or 90 <= diastolic <= 99):
+                        diagnosis['hypertension']['status'] = 'Hypertension Stage 1'
+                        diagnosis['hypertension']['color'] = 'red'
+                    else:
+                        diagnosis['hypertension']['status'] = 'Hypertension Stage 2'
+                        diagnosis['hypertension']['color'] = 'red'
 
                 # Find specimen type
                 specimen_match = re.search(r'Specimen Type\s*[:=]?\s*(fasting|random)', text, re.IGNORECASE)
@@ -357,23 +447,25 @@ def home():
                         diagnosis['hba1c']['color'] = 'red'
 
                 if diagnosis:
-                    # Determine overall result based on worst status (only for glucose and hba1c)
+                    # Determine overall result based on worst status (only for glucose, hba1c, and hypertension)
                     statuses = []
                     if 'glucose' in diagnosis:
                         statuses.append(diagnosis['glucose']['status'])
                     if 'hba1c' in diagnosis:
                         statuses.append(diagnosis['hba1c']['status'])
-                    if any('Diabetes' in s for s in statuses):
-                        overall_result = 'Diabetes Indicated'
+                    if 'hypertension' in diagnosis:
+                        statuses.append(diagnosis['hypertension']['status'])
+                    if any('Diabetes' in s or 'Hypertension Stage' in s for s in statuses):
+                        overall_result = 'Diabetes or Hypertension Indicated'
                         overall_color = 'red'
-                    elif any('Prediabetes' in s for s in statuses):
-                        overall_result = 'Prediabetes Indicated'
+                    elif any('Prediabetes' in s or 'Elevated/Prehypertension' in s for s in statuses):
+                        overall_result = 'Prediabetes or Prehypertension Indicated'
                         overall_color = 'orange'
                     else:
                         overall_result = 'Normal'
                         overall_color = 'green'
                 else:
-                    error = "No diabetes-related information found in the report."
+                    error = "No diabetes-related or hypertension information found in the report."
 
             except Exception as e:
                 logging.error(f"Error processing {filename}: {str(e)}")
