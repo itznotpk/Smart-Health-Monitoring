@@ -55,10 +55,12 @@ html_page = """
         .form-group { margin: 15px 0; display: flex; flex-direction: column; align-items: center; }
         .form-group label { font-weight: bold; margin-bottom: 5px; text-align: center; width: 100%; }
         input[type="file"], select { padding: 10px; width: 250px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .error-message { color: darkred; font-size: 14px; margin-top: 5px; display: none; }
         .buttons { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         button { padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
         button[type="submit"] { background-color: #007bff; color: white; }
         button[type="submit"]:hover { background-color: #0056b3; }
+        button[type="submit"]:disabled { background-color: #cccccc; cursor: not-allowed; }
         button[type="reset"], button[type="button"] { background-color: #6c757d; color: white; }
         button[type="reset"]:hover, button[type="button"]:hover { background-color: #545b62; }
         .result { font-size: 22px; margin-top: 20px; font-weight: bold; padding: 15px; border-radius: 4px; }
@@ -72,9 +74,16 @@ html_page = """
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .guideline-box { border: 1px solid #ddd; padding: 10px; margin: 20px auto; width: 80%; border-radius: 4px; background-color: #f8f9fa; }
+        .guideline-box h3 { cursor: pointer; margin: 0; padding: 10px; background-color: #e9ecef; border-radius: 4px; }
+        .guideline-box h3:hover { background-color: #d8dfe6; }
+        .guideline-table { transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 0; opacity: 0; overflow: hidden; }
+        .guideline-table.visible { max-height: 500px; opacity: 1; }
         .null-cell { background-color: #cccccc; }
         .results-section { margin-top: 30px; }
         .hidden { display: none !important; }
+        #loadingSpinner { margin-top: 20px; font-size: 16px; color: #007bff; }
+        .spinner { display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin-left: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -84,19 +93,21 @@ html_page = """
         <form method="post" enctype="multipart/form-data" id="analysisForm" onsubmit="showLoading()">
             <div class="form-group">
                 <label for="file">Upload Clinical Report (PDF):</label>
-                <input type="file" name="file" id="file" accept=".pdf" required>
+                <input type="file" name="file" id="file" accept=".pdf" required aria-label="Upload clinical report PDF">
+                <span id="file-error" class="error-message">Please upload a PDF file.</span>
             </div>
             <div class="form-group">
                 <label for="heart_disease">Heart Disease (Past/Current):</label>
-                <select name="heart_disease" id="heart_disease" required>
+                <select name="heart_disease" id="heart_disease" required aria-label="Select heart disease status">
                     <option value="">Select</option>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                 </select>
+                <span id="heart-disease-error" class="error-message">Please select an option.</span>
             </div>
             <div class="form-group">
                 <label for="smoking_history">Smoking History:</label>
-                <select name="smoking_history" id="smoking_history" required>
+                <select name="smoking_history" id="smoking_history" required aria-label="Select smoking history">
                     <option value="">Select</option>
                     <option value="No Info">No Info</option>
                     <option value="never">Never</option>
@@ -104,16 +115,18 @@ html_page = """
                     <option value="current">Current</option>
                     <option value="not current">Not Current</option>
                 </select>
+                <span id="smoking-history-error" class="error-message">Please select an option.</span>
             </div>
             <div class="buttons">
-                <button type="submit">Analyze Report and Predict Risk</button>
+                <button type="submit" id="submitBtn" disabled>Analyze Report and Predict Risk</button>
                 <button type="reset" onclick="resetResults()">Reset Form</button>
             </div>
         </form>
+        <div id="loadingSpinner" class="hidden">Processing... <span class="spinner"></span></div>
 
         {% if result %}
         <div class="results-section">
-            <div id="resultDiv" class="result {{ color }}">
+            <div id="resultDiv" class="result {{ color }}" role="alert">
                 {{ result }}
             </div>
             <div id="explanationDiv" class="explanation">
@@ -217,8 +230,8 @@ html_page = """
         {% endif %}
 
         <div class="guideline-box">
-            <h3>Hypertension Benchmarks (mmHg)</h3>
-            <table>
+            <h3 onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
+            <table class="guideline-table">
                 <tr><th>Status</th><th>Range</th></tr>
                 <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
                 <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
@@ -227,8 +240,8 @@ html_page = """
             </table>
         </div>
         <div class="guideline-box">
-            <h3>BMI Benchmarks (kg/m²)</h3>
-            <table>
+            <h3 onclick="toggleGuideline(this)">BMI Benchmarks (kg/m²)</h3>
+            <table class="guideline-table">
                 <tr><th>Status</th><th>Range</th></tr>
                 <tr><td>Underweight</td><td>&lt;18.5</td></tr>
                 <tr><td>Normal range</td><td>18.5-24.9</td></tr>
@@ -240,16 +253,16 @@ html_page = """
             </table>
         </div>
         <div class="guideline-box">
-            <h3>Glucose Benchmarks (mmol/L)</h3>
-            <table>
+            <h3 onclick="toggleGuideline(this)">Glucose Benchmarks (mmol/L)</h3>
+            <table class="guideline-table">
                 <tr><th>Category</th><th>Normal</th><th>Prediabetes</th><th>T2DM Diagnosis</th></tr>
                 <tr><td>Fasting</td><td>3.9-6.0</td><td>6.1-6.9</td><td>&ge;7.0</td></tr>
                 <tr><td>Random</td><td>3.9-7.7</td><td>7.8-11.0</td><td>&ge;11.1</td></tr>
             </table>
         </div>
         <div class="guideline-box">
-            <h3>HbA1c Benchmarks</h3>
-            <table>
+            <h3 onclick="toggleGuideline(this)">HbA1c Benchmarks</h3>
+            <table class="guideline-table">
                 <tr><th>Status</th><th>%</th><th>mmol/mol</th></tr>
                 <tr><td>Normal</td><td>&lt;5.7</td><td>&lt;39</td></tr>
                 <tr><td>Prediabetes</td><td>5.7-6.2</td><td>39-44</td></tr>
@@ -265,7 +278,8 @@ html_page = """
     </div>
     <script>
         function showLoading() {
-            document.querySelector('button[type="submit"]').innerText = 'Analyzing...';
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.querySelector('button[type="submit"]').disabled = true;
         }
 
         function resetResults() {
@@ -274,11 +288,48 @@ html_page = """
             const explanationDiv = document.getElementById('explanationDiv');
             const diagnosisTableDiv = document.getElementById('diagnosisTableDiv');
             const errorDiv = document.getElementById('errorDiv');
+            const loadingSpinner = document.getElementById('loadingSpinner');
             if (resultDiv) resultDiv.classList.add('hidden');
             if (explanationDiv) explanationDiv.classList.add('hidden');
             if (diagnosisTableDiv) diagnosisTableDiv.classList.add('hidden');
             if (errorDiv) errorDiv.classList.add('hidden');
+            if (loadingSpinner) loadingSpinner.classList.add('hidden');
+            document.querySelectorAll('.error-message').forEach(span => span.style.display = 'none');
+            validateForm();
         }
+
+        function toggleGuideline(header) {
+            const table = header.nextElementSibling;
+            table.classList.toggle('visible');
+        }
+
+        function validateForm() {
+            const fileInput = document.getElementById('file');
+            const heartDisease = document.getElementById('heart_disease');
+            const smokingHistory = document.getElementById('smoking_history');
+            const submitBtn = document.getElementById('submitBtn');
+
+            const fileError = document.getElementById('file-error');
+            const heartDiseaseError = document.getElementById('heart-disease-error');
+            const smokingHistoryError = document.getElementById('smoking-history-error');
+
+            const isFileValid = fileInput.files.length > 0;
+            const isHeartDiseaseValid = heartDisease.value !== '';
+            const isSmokingHistoryValid = smokingHistory.value !== '';
+
+            fileError.style.display = isFileValid ? 'none' : 'block';
+            heartDiseaseError.style.display = isHeartDiseaseValid ? 'none' : 'block';
+            smokingHistoryError.style.display = isSmokingHistoryValid ? 'none' : 'block';
+
+            submitBtn.disabled = !(isFileValid && isHeartDiseaseValid && isSmokingHistoryValid);
+        }
+
+        document.getElementById('file').addEventListener('change', validateForm);
+        document.getElementById('heart_disease').addEventListener('change', validateForm);
+        document.getElementById('smoking_history').addEventListener('change', validateForm);
+
+        // Initial validation on page load
+        validateForm();
     </script>
 </body>
 </html>
