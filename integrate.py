@@ -51,154 +51,169 @@ html_page = """
     <title>Universiti Malaya Diabetes Risk Kiosk from Clinical Report</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f8f9fa; }
-        .container { margin-top: 30px; }
-        input, select { margin: 8px; padding: 8px; width: 200px; }
-        button { padding: 10px 20px; margin-top: 15px; }
-        .result { font-size: 22px; margin-top: 20px; font-weight: bold; }
-        .explanation { font-size: 16px; margin-top: 10px; }
-        .green { color: green; }
-        .red { color: red; }
-        .orange { color: orange; }
+        .container { margin-top: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .form-group { margin: 15px 0; display: flex; flex-direction: column; align-items: center; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; text-align: center; width: 100%; }
+        input[type="file"], select { padding: 10px; width: 250px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .buttons { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        button { padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button[type="submit"] { background-color: #007bff; color: white; }
+        button[type="submit"]:hover { background-color: #0056b3; }
+        button[type="reset"], button[type="button"] { background-color: #6c757d; color: white; }
+        button[type="reset"]:hover, button[type="button"]:hover { background-color: #545b62; }
+        .result { font-size: 22px; margin-top: 20px; font-weight: bold; padding: 15px; border-radius: 4px; }
+        .explanation { font-size: 16px; margin-top: 10px; padding: 10px; background-color: #e9ecef; border-radius: 4px; }
+        .green { color: green; background-color: #d4edda; }
+        .red { color: red; background-color: #f8d7da; }
+        .orange { color: orange; background-color: #fff3cd; }
         .black { color: black; }
-        .error { color: darkred; font-weight: bold; }
+        .error { color: darkred; font-weight: bold; background-color: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0; }
         table { margin: 20px auto; border-collapse: collapse; width: 80%; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
-        .guideline-box { border: 1px solid #ddd; padding: 10px; margin: 10px auto; width: 80%; }
+        .guideline-box { border: 1px solid #ddd; padding: 10px; margin: 20px auto; width: 80%; border-radius: 4px; background-color: #f8f9fa; }
         .null-cell { background-color: #cccccc; }
+        .results-section { margin-top: 30px; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <h1>AI-Powered Diabetes Risk Kiosk from Clinical Report</h1>
     <div class="container">
         <p><strong>Disclaimer:</strong> This tool is for informational purposes only and uses Malaysian clinical guidelines. Consult a doctor for a proper diagnosis.</p>
-        <form method="post" enctype="multipart/form-data" onsubmit="showLoading()">
-            <label for="file">Upload Clinical Report (PDF):</label><br>
-            <input type="file" name="file" accept=".pdf" required><br>
-            <label for="heart_disease">Heart Disease (past/current):</label><br>
-            <select name="heart_disease" required>
-                <option value="">Select</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-            </select><br>
-            <label for="smoking_history">Smoking History:</label><br>
-            <select name="smoking_history" required>
-                <option value="">Select</option>
-                <option value="No Info">No Info</option>
-                <option value="never">Never</option>
-                <option value="former">Former</option>
-                <option value="current">Current</option>
-                <option value="not current">Not Current</option>
-            </select><br>
-            <button type="submit">Analyze Report and Predict Risk</button>
+        <form method="post" enctype="multipart/form-data" id="analysisForm" onsubmit="showLoading()">
+            <div class="form-group">
+                <label for="file">Upload Clinical Report (PDF):</label>
+                <input type="file" name="file" id="file" accept=".pdf" required>
+            </div>
+            <div class="form-group">
+                <label for="heart_disease">Heart Disease (Past/Current):</label>
+                <select name="heart_disease" id="heart_disease" required>
+                    <option value="">Select</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="smoking_history">Smoking History:</label>
+                <select name="smoking_history" id="smoking_history" required>
+                    <option value="">Select</option>
+                    <option value="No Info">No Info</option>
+                    <option value="never">Never</option>
+                    <option value="former">Former</option>
+                    <option value="current">Current</option>
+                    <option value="not current">Not Current</option>
+                </select>
+            </div>
+            <div class="buttons">
+                <button type="submit">Analyze Report and Predict Risk</button>
+                <button type="reset" onclick="resetResults()">Reset Form</button>
+            </div>
         </form>
-        <button onclick="location.reload();">Refresh and Reupload</button>
 
         {% if result %}
-        <div class="result {{ color }}">
-            {{ result }}
-        </div>
-        <div class="explanation">
-            {{ explanation | safe }}
+        <div class="results-section">
+            <div id="resultDiv" class="result {{ color }}">
+                {{ result }}
+            </div>
+            <div id="explanationDiv" class="explanation">
+                {{ explanation | safe }}
+            </div>
         </div>
         {% endif %}
 
         {% if diagnosis %}
-        <table>
-            <tr><th>Metric</th><th>Category</th><th>Value</th><th>Unit</th><th>Status</th></tr>
-            {% if 'age' in diagnosis %}
-            <tr>
-                <td>Age</td>
-                <td>{{ diagnosis.age.category }}</td>
-                <td>{{ diagnosis.age.value }}</td>
-                <td>{{ diagnosis.age.unit }}</td>
-                <td class="{{ diagnosis.age.color }}">{{ diagnosis.age.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td>Age</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'sex' in diagnosis %}
-            <tr>
-                <td>Gender</td>
-                <td>{{ diagnosis.sex.category }}</td>
-                <td>{{ diagnosis.sex.value }}</td>
-                <td>{{ diagnosis.sex.unit }}</td>
-                <td class="{{ diagnosis.sex.color }}">{{ diagnosis.sex.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td>Gender</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'bmi' in diagnosis %}
-            <tr>
-                <td>BMI</td>
-                <td>{{ diagnosis.bmi.category }}</td>
-                <td>{{ diagnosis.bmi.value | round(1) }}</td>
-                <td>{{ diagnosis.bmi.unit }}</td>
-                <td class="{{ diagnosis.bmi.color }}">{{ diagnosis.bmi.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td>BMI</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'heart_disease' in diagnosis %}
-            <tr>
-                <td>Heart Disease</td>
-                <td>{{ diagnosis.heart_disease.category }}</td>
-                <td>-</td>
-                <td>{{ diagnosis.heart_disease.unit }}</td>
-                <td class="{{ diagnosis.heart_disease.color }}">{{ diagnosis.heart_disease.value }}</td>
-            </tr>
-            {% else %}
-            <tr><td>Heart Disease</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'smoking_history' in diagnosis %}
-            <tr>
-                <td>Smoking History</td>
-                <td>{{ diagnosis.smoking_history.category }}</td>
-                <td>-</td>
-                <td>{{ diagnosis.smoking_history.unit }}</td>
-                <td class="{{ diagnosis.smoking_history.color }}">{{ diagnosis.smoking_history.value }}</td>
-            </tr>
-            {% else %}
-            <tr><td>Smoking History</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'hypertension' in diagnosis %}
-            <tr>
-                <td>Hypertension</td>
-                <td>{{ diagnosis.hypertension.category }}</td>
-                <td>{{ diagnosis.hypertension.value }}</td>
-                <td>{{ diagnosis.hypertension.unit }}</td>
-                <td class="{{ diagnosis.hypertension.color }}">{{ diagnosis.hypertension.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td>Hypertension</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
-            {% endif %}
-            {% if 'glucose' in diagnosis %}
-            <tr>
-                <td rowspan="2">Blood Glucose</td>
-                <td rowspan="2">{{ diagnosis.glucose.category }}</td>
-                <td>{{ diagnosis.glucose.value_mg | round(1) }}</td>
-                <td>mg/dL</td>
-                <td rowspan="2" class="{{ diagnosis.glucose.color }}">{{ diagnosis.glucose.status }}</td>
-            </tr>
-            <tr>
-                <td>{{ diagnosis.glucose.value_mmol | round(1) }}</td>
-                <td>mmol/L</td>
-            </tr>
-            {% endif %}
-            {% if 'hba1c' in diagnosis %}
-            <tr>
-                <td rowspan="2">HbA1c Level</td>
-                <td rowspan="2">-</td>
-                <td>{{ diagnosis.hba1c.value_percent | round(1) }}</td>
-                <td>%</td>
-                <td rowspan="2" class="{{ diagnosis.hba1c.color }}">{{ diagnosis.hba1c.status }}</td>
-            </tr>
-            <tr>
-                <td>{{ diagnosis.hba1c.value_mmol | round(0) }}</td>
-                <td>mmol/mol</td>
-            </tr>
-            {% endif %}
-        </table>
+        <div id="diagnosisTableDiv" class="results-section">
+            <table>
+                <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
+                {% if 'age' in diagnosis %}
+                <tr>
+                    <td>Age</td>
+                    <td>{{ diagnosis.age.value }}</td>
+                    <td>{{ diagnosis.age.unit }}</td>
+                    <td class="{{ diagnosis.age.color }}">{{ diagnosis.age.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>Age</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'sex' in diagnosis %}
+                <tr>
+                    <td>Gender</td>
+                    <td>{{ diagnosis.sex.value }}</td>
+                    <td>{{ diagnosis.sex.unit }}</td>
+                    <td class="{{ diagnosis.sex.color }}">{{ diagnosis.sex.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>Gender</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'bmi' in diagnosis %}
+                <tr>
+                    <td>BMI</td>
+                    <td>{{ diagnosis.bmi.value | round(1) }}</td>
+                    <td>{{ diagnosis.bmi.unit }}</td>
+                    <td class="{{ diagnosis.bmi.color }}">{{ diagnosis.bmi.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>BMI</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'heart_disease' in diagnosis %}
+                <tr>
+                    <td>Heart Disease</td>
+                    <td>{{ diagnosis.heart_disease.value }}</td>
+                    <td>{{ diagnosis.heart_disease.unit }}</td>
+                    <td class="{{ diagnosis.heart_disease.color }}">{{ diagnosis.heart_disease.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>Heart Disease</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'smoking_history' in diagnosis %}
+                <tr>
+                    <td>Smoking History</td>
+                    <td>{{ diagnosis.smoking_history.value }}</td>
+                    <td>{{ diagnosis.smoking_history.unit }}</td>
+                    <td class="{{ diagnosis.smoking_history.color }}">{{ diagnosis.smoking_history.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>Smoking History</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'hypertension' in diagnosis %}
+                <tr>
+                    <td>Hypertension</td>
+                    <td>{{ diagnosis.hypertension.value }}</td>
+                    <td>{{ diagnosis.hypertension.unit }}</td>
+                    <td class="{{ diagnosis.hypertension.color }}">{{ diagnosis.hypertension.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td>Hypertension</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
+                {% endif %}
+                {% if 'glucose' in diagnosis %}
+                <tr>
+                    <td>Blood Glucose ({{ diagnosis.glucose.category }})</td>
+                    <td>{{ diagnosis.glucose.value_mg | round(1) }}</td>
+                    <td>mg/dL</td>
+                    <td rowspan="2" class="{{ diagnosis.glucose.color }}">{{ diagnosis.glucose.status }}</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>{{ diagnosis.glucose.value_mmol | round(1) }}</td>
+                    <td>mmol/L</td>
+                </tr>
+                {% endif %}
+                {% if 'hba1c' in diagnosis %}
+                <tr>
+                    <td>HbA1c Level</td>
+                    <td>{{ diagnosis.hba1c.value_percent | round(1) }}</td>
+                    <td>%</td>
+                    <td rowspan="2" class="{{ diagnosis.hba1c.color }}">{{ diagnosis.hba1c.status }}</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>{{ diagnosis.hba1c.value_mmol | round(0) }}</td>
+                    <td>mmol/mol</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
         {% endif %}
 
         <div class="guideline-box">
@@ -216,7 +231,7 @@ html_page = """
             <table>
                 <tr><th>Status</th><th>Range</th></tr>
                 <tr><td>Underweight</td><td>&lt;18.5</td></tr>
-                <tr><td>Normal Range</td><td>18.5-24.9</td></tr>
+                <tr><td>Normal range</td><td>18.5-24.9</td></tr>
                 <tr><td>Overweight</td><td>&ge;25.0</td></tr>
                 <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
                 <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
@@ -231,7 +246,6 @@ html_page = """
                 <tr><td>Fasting</td><td>3.9-6.0</td><td>6.1-6.9</td><td>&ge;7.0</td></tr>
                 <tr><td>Random</td><td>3.9-7.7</td><td>7.8-11.0</td><td>&ge;11.1</td></tr>
             </table>
-            <p>T2DM = Type 2 Diabetes Mellitus</p>
         </div>
         <div class="guideline-box">
             <h3>HbA1c Benchmarks</h3>
@@ -244,7 +258,7 @@ html_page = """
         </div>
 
         {% if error %}
-        <div class="error">
+        <div id="errorDiv" class="error">
             {{ error }}
         </div>
         {% endif %}
@@ -252,6 +266,18 @@ html_page = """
     <script>
         function showLoading() {
             document.querySelector('button[type="submit"]').innerText = 'Analyzing...';
+        }
+
+        function resetResults() {
+            document.getElementById('analysisForm').reset();
+            const resultDiv = document.getElementById('resultDiv');
+            const explanationDiv = document.getElementById('explanationDiv');
+            const diagnosisTableDiv = document.getElementById('diagnosisTableDiv');
+            const errorDiv = document.getElementById('errorDiv');
+            if (resultDiv) resultDiv.classList.add('hidden');
+            if (explanationDiv) explanationDiv.classList.add('hidden');
+            if (diagnosisTableDiv) diagnosisTableDiv.classList.add('hidden');
+            if (errorDiv) errorDiv.classList.add('hidden');
         }
     </script>
 </body>
@@ -312,17 +338,15 @@ def home():
 
                 # Add user inputs to diagnosis
                 diagnosis['heart_disease'] = {
-                    'value': heart_disease, 
-                    'unit': '-', 
-                    'category': '-', 
+                    'value': '', 
+                    'unit': '', 
                     'status': heart_disease, 
                     'color': 'red' if heart_disease == 'Yes' else 'green'
                 }
                 diagnosis['smoking_history'] = {
-                    'value': smoking_history, 
-                    'unit': '-', 
-                    'category': '-', 
-                    'status': smoking_history, 
+                    'value': '', 
+                    'unit': '', 
+                    'status': smoking_history.replace('not current', 'Not Current').replace('No Info', 'No Info').capitalize(), 
                     'color': 'black' if smoking_history == 'No Info' else 'green' if smoking_history == 'never' else 'orange' if smoking_history in ['former', 'not current'] else 'red'
                 }
 
@@ -330,7 +354,7 @@ def home():
                 age_match = re.search(r'(age|Age|AGE)\s*[:=]?\s*(\d+\.?\d*)\s*(years|Years|YEARS)?', text, re.IGNORECASE)
                 if age_match:
                     age_value = float(age_match.group(2))
-                    diagnosis['age'] = {'value': age_value, 'unit': 'Years', 'category': '-', 'status': '', 'color': ''}
+                    diagnosis['age'] = {'value': age_value, 'unit': 'Years', 'status': '', 'color': ''}
 
                 # Parse gender (sex)
                 sex_match = re.search(r'(sex|Sex|SEX|gender|Gender|GENDER)\s*[:=]?\s*(male|female|m|f)', text, re.IGNORECASE)
@@ -340,18 +364,18 @@ def home():
                         sex_value = 'Male'
                     elif sex_value in ['f', 'female']:
                         sex_value = 'Female'
-                    diagnosis['sex'] = {'value': sex_value, 'unit': '-', 'category': '-', 'status': sex_value, 'color': 'black'}
+                    diagnosis['sex'] = {'value': sex_value, 'unit': '', 'status': ' ', 'color': 'black'}
 
                 # Parse BMI
                 bmi_match = re.search(r'(bmi|BMI|Body Mass Index)\s*[:=]?\s*(\d+\.?\d*)\s*(kg/m²|kg/sqm)?', text, re.IGNORECASE)
                 if bmi_match:
                     bmi_value = float(bmi_match.group(2))
-                    diagnosis['bmi'] = {'value': bmi_value, 'unit': 'kg/m²', 'category': '-', 'status': '', 'color': ''}
+                    diagnosis['bmi'] = {'value': bmi_value, 'unit': 'kg/m²', 'status': '', 'color': ''}
                     if bmi_value < 18.5:
                         diagnosis['bmi']['status'] = 'Underweight'
                         diagnosis['bmi']['color'] = 'orange'
                     elif 18.5 <= bmi_value <= 24.9:
-                        diagnosis['bmi']['status'] = 'Normal Range'
+                        diagnosis['bmi']['status'] = 'Normal'
                         diagnosis['bmi']['color'] = 'green'
                     elif 25.0 <= bmi_value <= 29.9:
                         diagnosis['bmi']['status'] = 'Pre-obese'
@@ -372,7 +396,7 @@ def home():
                     systolic = int(bp_match.group(2))
                     diastolic = int(bp_match.group(3))
                     bp_value = f"{systolic}/{diastolic}"
-                    diagnosis['hypertension'] = {'value': bp_value, 'unit': 'mmHg', 'category': '-', 'status': '', 'color': ''}
+                    diagnosis['hypertension'] = {'value': bp_value, 'unit': 'mmHg', 'status': '', 'color': ''}
                     if systolic < 120 and diastolic < 80:
                         diagnosis['hypertension']['status'] = 'Normal'
                         diagnosis['hypertension']['color'] = 'green'
@@ -394,7 +418,7 @@ def home():
                     if specimen_category == 'Normal':
                         specimen_category = 'Random'  # Map 'Normal' to 'Random' for glucose context
                 else:
-                    specimen_category = 'Random'  # Default to Random (Normal) per request
+                    specimen_category = 'Random'  # Default to Random per request
 
                 # Parse blood glucose
                 glucose_matches = re.findall(
@@ -437,7 +461,7 @@ def home():
                         else:
                             diagnosis['glucose']['status'] = 'Diabetes'
                             diagnosis['glucose']['color'] = 'red'
-                    else:  # Random (including default Normal)
+                    else:  # Random (including default)
                         if glucose_value_mmol < 3.9:
                             diagnosis['glucose']['status'] = 'Hypoglycemia'
                             diagnosis['glucose']['color'] = 'red'
@@ -525,7 +549,7 @@ def home():
                 logger.debug(f"Prediction: {risk}, Probability: {prob:.1f}%")
 
                 # Format result and explanation
-                result = f"Sample Prediction: {risk} (Probability of Diabetes: {prob:.1f}%)"
+                result = f"Prediction: {risk} (Probability of Diabetes: {prob:.1f}%)"
                 color = "red" if sample_pred == 1 else "green"
                 explanation = "Recommendation: If >50%, consult a doctor!<br>"
                 if sample_pred == 1:
