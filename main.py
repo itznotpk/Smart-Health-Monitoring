@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, Response
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -11,6 +11,9 @@ import requests
 import json
 
 
+# ==========================
+# Ollama API Integration
+# ==========================
 def query_ollama_api(prompt, model="llama3"):
     url = "http://localhost:11434/api/generate"
     payload = {
@@ -35,11 +38,27 @@ def query_ollama_api(prompt, model="llama3"):
                     break
         return output.strip()
 
-
 # ==========================
 # Flask App
 # ==========================
 app = Flask(__name__)
+
+def stream_from_ollama(prompt, model="llama3:latest"):
+    url = "http://localhost:11434/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": True
+    }
+    with requests.post(url, json=payload, stream=True) as r:
+        for line in r.iter_lines():
+            if line:
+                data = json.loads(line.decode("utf-8"))
+                if "response" in data:
+                    yield data["response"]
+                if data.get("done", False):
+                    break
+
 
 # ==========================
 # Load Dataset & Train Model
@@ -90,7 +109,7 @@ html_page = """
         button { padding: 10px 20px; margin-top: 15px; }
         .result { font-size: 22px; margin-top: 20px; font-weight: bold; }
         .explanation { font-size: 16px; margin-top: 10px; }
-        .recommendation { font-size: 16px; margin-top: 20px; color: blue; white-space: pre-line; }
+        .recommendation { font-size: 16px; margin-top: 20px; color: blue; white-space: pre-line; text-align: left; display:inline-block; max-width:600px; }
         .green { color: green; }
         .red { color: red; }
         .orange { color: orange; }
@@ -118,8 +137,26 @@ html_page = """
         </div>
         <div class="recommendation">
             <strong>AI Recommendation:</strong><br>
-            {{ recommendation }}
+            <div id="recommendationBox">⏳ Generating recommendation...</div>
         </div>
+        <script>
+            // Stream AI recommendation live
+            fetch("/stream_recommendation", { method: "POST" })
+                .then(response => {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const output = document.getElementById("recommendationBox");
+                    output.innerHTML = "";
+                    function readChunk() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) return;
+                            output.innerHTML += decoder.decode(value);
+                            readChunk();
+                        });
+                    }
+                    readChunk();
+                });
+        </script>
         {% endif %}
     </div>
 </body>
@@ -188,7 +225,7 @@ def home():
         }
         explanation = f"Confidence: {confidence:.1f}%. Flagged due to {reasons.get(class_idx, 'general anomaly')}."
 
-        # 🔹 Generate LLM recommendation
+        #Generate LLM recommendation
         recommendation = generate_recommendation(age, hr, spo2, bp, temp, result, confidence)
 
     return render_template_string(
@@ -198,6 +235,11 @@ def home():
         explanation=explanation,
         recommendation=recommendation
     )
+
+@app.route("/stream", methods=["POST"])
+def stream():
+    prompt = request.form.get("prompt", "Give me a health tip.")
+    return Response(stream_from_ollama(stream_from_ollama(prompt)), mimetype='text/plain')
 
 if __name__ == "__main__":
     app.run(debug=True)

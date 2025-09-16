@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, stream_with_context, Response
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import load_model
@@ -8,7 +8,32 @@ import re
 import pdfplumber
 import os
 from werkzeug.utils import secure_filename
+import ollama
+import requests
+import json
 
+# ==========================
+# Ollama Streaming Integration
+# ==========================
+def stream_from_ollama(prompt, model="llama3:latest"):
+    """
+    Generator that streams tokens from Ollama API.
+    """
+    url = "http://localhost:11434/api/generate"
+    payload = {"model": model, "prompt": prompt, "stream": True}
+
+    with requests.post(url, json=payload, stream=True) as r:
+        for line in r.iter_lines():
+            if line:
+                data = json.loads(line.decode("utf-8"))
+                if "response" in data:
+                    yield data["response"]  # stream each token
+                if data.get("done", False):
+                    break
+
+# ==========================
+# Flask App
+# ==========================
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
@@ -124,15 +149,44 @@ html_page = """
         </form>
         <div id="loadingSpinner" class="hidden">Processing... <span class="spinner"></span></div>
 
-        {% if result %}
+        {% if result %} 
         <div class="results-section">
-            <div id="resultDiv" class="result {{ color }}" role="alert">
-                {{ result }}
-            </div>
-            <div id="explanationDiv" class="explanation">
-                {{ explanation | safe }}
+            <div id="ollama-output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 15px;">
+                <strong>AI Recommendations will appear here:</strong>
             </div>
         </div>
+
+        <script>
+        function startStreaming() {
+            const eventSource = new EventSource("/stream_recommendation");
+            const outputDiv = document.getElementById("ollama-output");
+            outputDiv.innerHTML = "";
+
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === "result") {
+                    outputDiv.innerHTML += data.text;  // Append streamed text
+                } else if (data.type === "end") {
+                    eventSource.close();
+                } else if (data.type === "error") {
+                    outputDiv.innerHTML = "<span style='color:red;'>" + data.text + "</span>";
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = function() {
+                outputDiv.innerHTML += "<br><span style='color:red;'>Error receiving AI response.</span>";
+                eventSource.close();
+            };
+        }
+
+        // Trigger only if there is a prediction result
+        document.addEventListener("DOMContentLoaded", function() {
+            {% if result %}
+                startStreaming();
+            {% endif %}
+        });
+        </script>
         {% endif %}
 
         {% if diagnosis %}
@@ -328,7 +382,6 @@ html_page = """
         document.getElementById('heart_disease').addEventListener('change', validateForm);
         document.getElementById('smoking_history').addEventListener('change', validateForm);
 
-        // Initial validation on page load
         validateForm();
     </script>
 </body>
@@ -617,7 +670,56 @@ def home():
         else:
             error = "Invalid file type. Please upload a PDF."
 
+        # Save for streaming later
+        global latest_prompt
+        latest_prompt = f"""
+            You are a medical assistant AI. Analyze the following patient data and provide a clear explanation + lifestyle recommendations in simple language.
+
+        Patient Information:
+        - Gender: {gender}
+        - Age: {age}
+        - BMI: {bmi}
+        - Blood Pressure: {diagnosis['hypertension']['value']}
+        - HbA1c: {HbA1c_level}%
+        - Blood Glucose: {blood_glucose_level} mg/dL
+        - Heart Disease: {heart_disease}
+        - Smoking History: {smoking_history}
+
+        Prediction result: {risk} (Probability: {prob:.1f}%)
+
+        Based on Malaysian clinical guidelines, explain the risk status and give personalized health advice.
+        """
+
     return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+
+
+@app.route('/stream_recommendation')
+def stream_recommendation():
+    def generate():
+        global latest_prompt
+        if not latest_prompt:
+            yield f"data: {json.dumps({'type': 'error', 'text': 'No prompt available. Please upload a report first.'})}\n\n"
+            return
+
+        try:
+            for chunk in ollama.chat(
+                model="llama3", 
+                messages=[{"role": "user", "content": latest_prompt}],
+                stream=True,
+            ):
+                if "message" in chunk and "content" in chunk["message"]:
+                    word = chunk["message"]["content"]
+                    yield f"data: {json.dumps({'type': 'result', 'text': word})}\n\n"
+
+            # End of stream
+            yield f"data: {json.dumps({'type': 'end'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
