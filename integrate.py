@@ -12,6 +12,7 @@ import ollama
 import requests
 import json
 
+
 # ==========================
 # Ollama Streaming Integration
 # ==========================
@@ -31,11 +32,8 @@ def stream_from_ollama(prompt, model="llama3:latest"):
                 if data.get("done", False):
                     break
 
-# ==========================
-# Flask App
-# ==========================
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = 'Uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
 
@@ -74,46 +72,53 @@ html_page = """
 <html>
 <head>
     <title>Universiti Malaya Diabetes Risk Kiosk from Clinical Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f8f9fa; }
-        .container { margin-top: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
-        .form-group { margin: 15px 0; display: flex; flex-direction: column; align-items: center; }
-        .form-group label { font-weight: bold; margin-bottom: 5px; text-align: center; width: 100%; }
-        input[type="file"], select { padding: 10px; width: 250px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
-        .error-message { color: darkred; font-size: 14px; margin-top: 5px; display: none; }
-        .buttons { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-        button { padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        button[type="submit"] { background-color: #007bff; color: white; }
-        button[type="submit"]:hover { background-color: #0056b3; }
-        button[type="submit"]:disabled { background-color: #cccccc; cursor: not-allowed; }
-        button[type="reset"], button[type="button"] { background-color: #6c757d; color: white; }
-        button[type="reset"]:hover, button[type="button"]:hover { background-color: #545b62; }
-        .result { font-size: 22px; margin-top: 20px; font-weight: bold; padding: 15px; border-radius: 4px; }
-        .explanation { font-size: 16px; margin-top: 10px; padding: 10px; background-color: #e9ecef; border-radius: 4px; }
-        .green { color: green; background-color: #d4edda; }
-        .red { color: red; background-color: #f8d7da; }
-        .orange { color: orange; background-color: #fff3cd; }
-        .black { color: black; }
-        .error { color: darkred; font-weight: bold; background-color: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0; }
-        table { margin: 20px auto; border-collapse: collapse; width: 80%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .guideline-box { border: 1px solid #ddd; padding: 10px; margin: 20px auto; width: 80%; border-radius: 4px; background-color: #f8f9fa; }
-        .guideline-box h3 { cursor: pointer; margin: 0; padding: 10px; background-color: #e9ecef; border-radius: 4px; }
-        .guideline-box h3:hover { background-color: #d8dfe6; }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #F5F6F5; color: #3B3C50; }
+        .container { margin-top: 40px; max-width: 700px; margin-left: auto; margin-right: auto; padding: 20px; }
+        .form-group { margin: 20px 0; display: flex; flex-direction: column; align-items: center; }
+        .form-group label { font-weight: bold; margin-bottom: 8px; text-align: center; width: 100%; font-size: 16px; color: #3B3C50; }
+        input[type="file"], select { padding: 12px; width: 280px; border: 2px solid #3B3C50; border-radius: 6px; font-size: 16px; background-color: #FFFFFF; }
+        .error-message { color: #D04848; font-size: 14px; margin-top: 6px; display: none; }
+        .buttons { margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        button { padding: 12px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s ease; }
+        button[type="submit"] { background-color: #9ED048; color: #3B3C50; }
+        button[type="submit"]:hover { background-color: #7CA63A; }
+        button[type="submit"]:disabled { background-color: #CCCCCC; cursor: not-allowed; }
+        button[type="reset"], button[type="button"] { background-color: #3B3C50; color: #FFFFFF; }
+        button[type="reset"]:hover, button[type="button"]:hover { background-color: #2A2B3A; }
+        .result { font-size: 24px; margin-top: 30px; font-weight: bold; padding: 20px; border-radius: 6px; }
+        .explanation { font-size: 16px; margin-top: 15px; padding: 15px; background-color: #FFFFFF; border: 2px solid #3B3C50; border-radius: 6px; }
+        .green { color: #9ED048; background-color: #E7F2D3; }
+        .red { color: #D04848; background-color: #F8D7DA; }
+        .orange { color: #F4A261; background-color: #FFF3CD; }
+        .black { color: #3B3C50; }
+        .error { color: #D04848; font-weight: bold; background-color: #F8D7DA; padding: 15px; border-radius: 6px; margin: 15px 0; }
+        table { margin: 25px auto; border-collapse: collapse; width: 85%; }
+        th, td { border: 2px solid #3B3C50; padding: 10px; text-align: left; }
+        th { background-color: #3B3C50; color: #FFFFFF; }
+        h1 { font-size: 28px; color: #3B3C50; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        h3 { font-size: 20px; color: #3B3C50; }
+        .guideline-box { border: 2px solid #3B3C50; padding: 15px; margin: 25px auto; width: 85%; border-radius: 6px; background-color: #FFFFFF; }
+        .guideline-box h3 { cursor: pointer; margin: 0; padding: 12px; background-color: #3B3C50; color: #FFFFFF; border-radius: 6px; transition: background-color 0.3s ease; }
+        .guideline-box h3:hover { background-color: #2A2B3A; }
         .guideline-table { transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 0; opacity: 0; overflow: hidden; }
         .guideline-table.visible { max-height: 500px; opacity: 1; }
-        .null-cell { background-color: #cccccc; }
-        .results-section { margin-top: 30px; }
+        .null-cell { background-color: #CCCCCC; }
+        .results-section { margin-top: 40px; }
         .hidden { display: none !important; }
-        #loadingSpinner { margin-top: 20px; font-size: 16px; color: #007bff; }
-        .spinner { display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin-left: 10px; }
+        #loadingSpinner { margin-top: 25px; font-size: 18px; color: #3B3C50; }
+        .spinner { display: inline-block; border: 5px solid #F5F6F5; border-top: 5px solid #9ED048; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-left: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .chart-container { margin: 30px auto; max-width: 600px; }
+        canvas { max-width: 100%; height: auto; }
     </style>
 </head>
 <body>
-    <h1>AI-Powered Diabetes Risk Kiosk from Clinical Report</h1>
     <div class="container">
+        <img src="/static/mycaring_logo.png" alt="Diabetes Risk Kiosk Logo" style="display:block; margin:0 auto; max-width:180px; margin-bottom:18px;">
+        <!-- Optionally, add a small heading below the logo -->
+        <!-- <h2 style="margin-bottom:18px;">Universiti Malaya Diabetes Risk Kiosk</h2> -->
         <p><strong>Disclaimer:</strong> This tool is for informational purposes only and uses Malaysian clinical guidelines. Consult a doctor for a proper diagnosis.</p>
         <form method="post" enctype="multipart/form-data" id="analysisForm" onsubmit="showLoading()">
             <div class="form-group">
@@ -149,45 +154,71 @@ html_page = """
         </form>
         <div id="loadingSpinner" class="hidden">Processing... <span class="spinner"></span></div>
 
-        {% if result %} 
+        {% if result %}
         <div class="results-section">
-            <div id="ollama-output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 15px;">
+            <div id="resultDiv" class="result {{ color }}" role="alert">
+                {{ result }}
+            </div>
+
+            <!-- AI Recommendations Streaming Output -->
+            <div id="ollama-output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 15px;"
+                role="region" aria-live="polite" aria-label="AI Recommendations">
                 <strong>AI Recommendations will appear here:</strong>
             </div>
-        </div>
 
-        <script>
-        function startStreaming() {
-            const eventSource = new EventSource("/stream_recommendation");
-            const outputDiv = document.getElementById("ollama-output");
-            outputDiv.innerHTML = "";
+            <script>
+                function startStreaming() {
+                    const eventSource = new EventSource("/stream_recommendation");
+                    const outputDiv = document.getElementById("ollama-output");
+                    outputDiv.innerHTML = "";
 
-            eventSource.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                if (data.type === "result") {
-                    outputDiv.innerHTML += data.text;  // Append streamed text
-                } else if (data.type === "end") {
-                    eventSource.close();
-                } else if (data.type === "error") {
-                    outputDiv.innerHTML = "<span style='color:red;'>" + data.text + "</span>";
-                    eventSource.close();
+                    eventSource.onmessage = function(event) {
+                        const data = JSON.parse(event.data);
+                        if (data.type === "result") {
+                            outputDiv.innerHTML += data.text;  // Append streamed text
+                        } else if (data.type === "end") {
+                            eventSource.close();
+                        } else if (data.type === "error") {
+                            outputDiv.innerHTML = "<span style='color:red;'>" + data.text + "</span>";
+                            eventSource.close();
+                        }
+                    };
+
+                    eventSource.onerror = function() {
+                        outputDiv.innerHTML += "<br><span style='color:red;'>Error receiving AI response.</span>";
+                        eventSource.close();
+                    };
                 }
-            };
 
-            eventSource.onerror = function() {
-                outputDiv.innerHTML += "<br><span style='color:red;'>Error receiving AI response.</span>";
-                eventSource.close();
-            };
-        }
+                // Start streaming only if there is a result
+                document.addEventListener("DOMContentLoaded", function() {
+                    {% if result %}
+                        startStreaming();
+                    {% endif %}
+                });
+            </script>
 
-        // Trigger only if there is a prediction result
-        document.addEventListener("DOMContentLoaded", function() {
-            {% if result %}
-                startStreaming();
+            {% if diagnosis %}
+            <div class="chart-container" role="region" aria-label="Vital Signs Visualization">
+                <h3>Vital Signs Overview</h3>
+                <canvas id="vitalsChart"></canvas>
+            </div>
+            <div class="chart-container" role="region" aria-label="Diabetes Risk Confidence">
+                <h3>Prediction Confidence</h3>
+                <canvas id="confidenceChart"></canvas>
+            </div>
+            <div class="chart-container" role="region" aria-label="Health Risk Profile">
+                <h3>Health Risk Profile</h3>
+                <canvas id="riskProfileChart"></canvas>
+            </div>
+            <div class="chart-container" role="region" aria-label="Risk Factor Contribution">
+                <h3>Risk Factor Contribution</h3>
+                <canvas id="riskFactorChart"></canvas>
+            </div>
             {% endif %}
-        });
-        </script>
+        </div>
         {% endif %}
+
 
         {% if diagnosis %}
         <div id="diagnosisTableDiv" class="results-section">
@@ -343,12 +374,21 @@ html_page = """
             const diagnosisTableDiv = document.getElementById('diagnosisTableDiv');
             const errorDiv = document.getElementById('errorDiv');
             const loadingSpinner = document.getElementById('loadingSpinner');
+            const vitalsChart = document.getElementById('vitalsChart');
+            const confidenceChart = document.getElementById('confidenceChart');
+            const riskProfileChart = document.getElementById('riskProfileChart');
+            const riskFactorChart = document.getElementById('riskFactorChart');
             if (resultDiv) resultDiv.classList.add('hidden');
             if (explanationDiv) explanationDiv.classList.add('hidden');
             if (diagnosisTableDiv) diagnosisTableDiv.classList.add('hidden');
             if (errorDiv) errorDiv.classList.add('hidden');
             if (loadingSpinner) loadingSpinner.classList.add('hidden');
+            if (vitalsChart) vitalsChart.parentNode.classList.add('hidden');
+            if (confidenceChart) confidenceChart.parentNode.classList.add('hidden');
+            if (riskProfileChart) riskProfileChart.parentNode.classList.add('hidden');
+            if (riskFactorChart) riskFactorChart.parentNode.classList.add('hidden');
             document.querySelectorAll('.error-message').forEach(span => span.style.display = 'none');
+            document.querySelectorAll('.guideline-table').forEach(table => table.classList.remove('visible'));
             validateForm();
         }
 
@@ -378,10 +418,209 @@ html_page = """
             submitBtn.disabled = !(isFileValid && isHeartDiseaseValid && isSmokingHistoryValid);
         }
 
+        {% if diagnosis %}
+        // Vital Signs Chart
+        const vitalsCtx = document.getElementById('vitalsChart').getContext('2d');
+        new Chart(vitalsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['BMI', 'Blood Glucose (mg/dL)', 'HbA1c (%)'],
+                datasets: [{
+                    label: 'Your Values',
+                    data: [
+                        {{ diagnosis.bmi.value | round(1) if 'bmi' in diagnosis else 0 }},
+                        {{ diagnosis.glucose.value_mg | round(1) if 'glucose' in diagnosis else 0 }},
+                        {{ diagnosis.hba1c.value_percent | round(1) if 'hba1c' in diagnosis else 0 }}
+                    ],
+                    backgroundColor: [
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848'
+                    ],
+                    borderColor: '#3B3C50',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true },
+                    x: { ticks: { color: '#3B3C50', font: { size: 14 } } }
+                },
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            bmiNormal: {
+                                type: 'line',
+                                yMin: 18.5,
+                                yMax: 18.5,
+                                borderColor: '#9ED048',
+                                borderWidth: 2,
+                                label: { content: 'BMI Normal Min', enabled: true, position: 'start' }
+                            },
+                            bmiNormalMax: {
+                                type: 'line',
+                                yMin: 24.9,
+                                yMax: 24.9,
+                                borderColor: '#9ED048',
+                                borderWidth: 2,
+                                label: { content: 'BMI Normal Max', enabled: true, position: 'start' }
+                            },
+                            glucoseNormalMax: {
+                                type: 'line',
+                                xMin: 1,
+                                xMax: 1,
+                                yMin: {{ 7.7 * 18.0 if diagnosis.glucose.category == 'Random' else 6.0 * 18.0 if 'glucose' in diagnosis else 0 }},
+                                yMax: {{ 7.7 * 18.0 if diagnosis.glucose.category == 'Random' else 6.0 * 18.0 if 'glucose' in diagnosis else 0 }},
+                                borderColor: '#9ED048',
+                                borderWidth: 2,
+                                label: { content: 'Glucose Normal Max', enabled: true, position: 'start' }
+                            },
+                            hba1cNormalMax: {
+                                type: 'line',
+                                xMin: 2,
+                                xMax: 2,
+                                yMin: 5.7,
+                                yMax: 5.7,
+                                borderColor: '#9ED048',
+                                borderWidth: 2,
+                                label: { content: 'HbA1c Normal Max', enabled: true, position: 'start' }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Confidence Chart
+        const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
+        const probMatch = '{{ result }}'.match(/Probability of Diabetes: (\d+\.\d)%/);
+        const diabetesProb = probMatch ? parseFloat(probMatch[1]) : 0;
+        new Chart(confidenceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Diabetes Risk', 'Normal'],
+                datasets: [{
+                    data: [diabetesProb, 100 - diabetesProb],
+                    backgroundColor: ['#D04848', '#9ED048'],
+                    borderColor: '#3B3C50',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } }
+                }
+            }
+        });
+
+        // Risk Profile Chart
+        const riskProfileCtx = document.getElementById('riskProfileChart').getContext('2d');
+        new Chart(riskProfileCtx, {
+            type: 'radar',
+            data: {
+                labels: ['BMI', 'Blood Glucose', 'HbA1c', 'Hypertension', 'Heart Disease', 'Smoking History'],
+                datasets: [{
+                    label: 'Your Health Profile',
+                    data: [
+                        {{ (diagnosis.bmi.value / 40 * 100) | round(1) if 'bmi' in diagnosis else 0 }},
+                        {{ (diagnosis.glucose.value_mg / (7.7 * 18.0) * 100) | round(1) if 'glucose' in diagnosis and diagnosis.glucose.category == 'Random' else (diagnosis.glucose.value_mg / (6.0 * 18.0) * 100) | round(1) if 'glucose' in diagnosis else 0 }},
+                        {{ (diagnosis.hba1c.value_percent / 6.3 * 100) | round(1) if 'hba1c' in diagnosis else 0 }},
+                        {{ 100 if 'hypertension' in diagnosis and diagnosis.hypertension.status in ['Hypertension Stage 1', 'Hypertension Stage 2'] else 0 }},
+                        {{ 100 if 'heart_disease' in diagnosis and diagnosis.heart_disease.status == 'Yes' else 0 }},
+                        {{ 0 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status == 'Never' else 50 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status in ['Former', 'Not Current'] else 100 if 'smoking_history' in diagnosis else 0 }}
+                    ],
+                    backgroundColor: 'rgba(158, 208, 72, 0.2)',
+                    borderColor: '#9ED048',
+                    borderWidth: 2,
+                    pointBackgroundColor: [
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#F4A261',
+                        '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#3B3C50'
+                    ]
+                }]
+            },
+            options: {
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { stepSize: 20, color: '#3B3C50', font: { size: 12 } }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.raw;
+                                const statuses = {
+                                    'BMI': '{{ diagnosis.bmi.status if 'bmi' in diagnosis else 'Not Available' }}',
+                                    'Blood Glucose': '{{ diagnosis.glucose.status if 'glucose' in diagnosis else 'Not Available' }}',
+                                    'HbA1c': '{{ diagnosis.hba1c.status if 'hba1c' in diagnosis else 'Not Available' }}',
+                                    'Hypertension': '{{ diagnosis.hypertension.status if 'hypertension' in diagnosis else 'Not Available' }}',
+                                    'Heart Disease': '{{ diagnosis.heart_disease.status if 'heart_disease' in diagnosis else 'Not Available' }}',
+                                    'Smoking History': '{{ diagnosis.smoking_history.status if 'smoking_history' in diagnosis else 'Not Available' }}'
+                                };
+                                return `${label}: ${value}% (Status: ${statuses[label]})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Risk Factor Contribution Chart
+        const riskFactorCtx = document.getElementById('riskFactorChart').getContext('2d');
+        new Chart(riskFactorCtx, {
+            type: 'pie',
+            data: {
+                labels: ['HbA1c', 'Blood Glucose', 'Age', 'BMI', 'Hypertension'],
+                datasets: [{
+                    data: [23.07, 10.50, 2.84, 0.80, 0.16],
+                    backgroundColor: [
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.age.color if 'age' in diagnosis else 'black' }}' === '' ? '#3B3C50' : '#3B3C50',
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848'
+                    ],
+                    borderColor: '#3B3C50',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.raw;
+                                const statuses = {
+                                    'HbA1c': '{{ diagnosis.hba1c.status if 'hba1c' in diagnosis else 'Not Available' }}',
+                                    'Blood Glucose': '{{ diagnosis.glucose.status if 'glucose' in diagnosis else 'Not Available' }}',
+                                    'Age': '{{ diagnosis.age.status if 'age' in diagnosis else 'Not Available' }}',
+                                    'BMI': '{{ diagnosis.bmi.status if 'bmi' in diagnosis else 'Not Available' }}',
+                                    'Hypertension': '{{ diagnosis.hypertension.status if 'hypertension' in diagnosis else 'Not Available' }}'
+                                };
+                                return `${label}: ${value}% (Status: ${statuses[label]})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+
         document.getElementById('file').addEventListener('change', validateForm);
         document.getElementById('heart_disease').addEventListener('change', validateForm);
         document.getElementById('smoking_history').addEventListener('change', validateForm);
 
+        // Initial validation on page load
         validateForm();
     </script>
 </body>
@@ -692,7 +931,6 @@ def home():
 
     return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
 
-
 @app.route('/stream_recommendation')
 def stream_recommendation():
     def generate():
@@ -718,7 +956,6 @@ def stream_recommendation():
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
-
 
 
 if __name__ == "__main__":
