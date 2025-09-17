@@ -74,293 +74,769 @@ html_page = """
     <title>Universiti Malaya Diabetes Risk Kiosk from Clinical Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #F5F6F5; color: #3B3C50; }
-        .container { margin-top: 40px; max-width: 700px; margin-left: auto; margin-right: auto; padding: 20px; }
-        .form-group { margin: 20px 0; display: flex; flex-direction: column; align-items: center; }
-        .form-group label { font-weight: bold; margin-bottom: 8px; text-align: center; width: 100%; font-size: 16px; color: #3B3C50; }
-        input[type="file"], select { padding: 12px; width: 280px; border: 2px solid #3B3C50; border-radius: 6px; font-size: 16px; background-color: #FFFFFF; }
-        .error-message { color: #D04848; font-size: 14px; margin-top: 6px; display: none; }
-        .buttons { margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-        button { padding: 12px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s ease; }
-        button[type="submit"] { background-color: #9ED048; color: #3B3C50; }
-        button[type="submit"]:hover { background-color: #7CA63A; }
-        button[type="submit"]:disabled { background-color: #CCCCCC; cursor: not-allowed; }
-        button[type="reset"], button[type="button"] { background-color: #3B3C50; color: #FFFFFF; }
-        button[type="reset"]:hover, button[type="button"]:hover { background-color: #2A2B3A; }
-        .result { font-size: 24px; margin-top: 30px; font-weight: bold; padding: 20px; border-radius: 6px; }
-        .explanation { font-size: 16px; margin-top: 15px; padding: 15px; background-color: #FFFFFF; border: 2px solid #3B3C50; border-radius: 6px; }
-        .green { color: #9ED048; background-color: #E7F2D3; }
-        .red { color: #D04848; background-color: #F8D7DA; }
-        .orange { color: #F4A261; background-color: #FFF3CD; }
-        .black { color: #3B3C50; }
-        .error { color: #D04848; font-weight: bold; background-color: #F8D7DA; padding: 15px; border-radius: 6px; margin: 15px 0; }
-        table { margin: 25px auto; border-collapse: collapse; width: 85%; }
-        th, td { border: 2px solid #3B3C50; padding: 10px; text-align: left; }
-        th { background-color: #3B3C50; color: #FFFFFF; }
-        h1 { font-size: 28px; color: #3B3C50; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-        h3 { font-size: 20px; color: #3B3C50; }
-        .guideline-box { border: 2px solid #3B3C50; padding: 15px; margin: 25px auto; width: 85%; border-radius: 6px; background-color: #FFFFFF; }
-        .guideline-box h3 { cursor: pointer; margin: 0; padding: 12px; background-color: #3B3C50; color: #FFFFFF; border-radius: 6px; transition: background-color 0.3s ease; }
-        .guideline-box h3:hover { background-color: #2A2B3A; }
-        .guideline-table { transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 0; opacity: 0; overflow: hidden; }
-        .guideline-table.visible { max-height: 500px; opacity: 1; }
-        .null-cell { background-color: #CCCCCC; }
-        .results-section { margin-top: 40px; }
-        .hidden { display: none !important; }
-        #loadingSpinner { margin-top: 25px; font-size: 18px; color: #3B3C50; }
-        .spinner { display: inline-block; border: 5px solid #F5F6F5; border-top: 5px solid #9ED048; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-left: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .chart-container { margin: 30px auto; max-width: 600px; }
-        canvas { max-width: 100%; height: auto; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #A8D5BA 0%, #C8E6C9 50%, #E8F5E8 100%);
+            min-height: 100vh;
+            color: #2D3748;
+            line-height: 1.6;
+        }
+
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 80px;
+            background: rgba(45, 55, 72, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 0;
+            position: fixed;
+            height: 100vh;
+            right: 0;
+            z-index: 1000;
+            border-radius: 20px 0 0 20px;
+        }
+
+        .sidebar-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            font-size: 20px;
+        }
+
+        .sidebar-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            margin-right: 80px;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, #4FD1C7 0%, #38B2AC 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 209, 199, 0.4);
+        }
+
+        .submit-button:disabled {
+            background: #CBD5E0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        .result-icon.success {
+            background: linear-gradient(135deg, #68D391 0%, #38A169 100%);
+        }
+
+        .result-icon.warning {
+            background: linear-gradient(135deg, #F6AD55 0%, #ED8936 100%);
+        }
+
+        .result-icon.danger {
+            background: linear-gradient(135deg, #FC8181 0%, #E53E3E 100%);
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2D3748;
+        }
+
+        .result-subtitle {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #4A5568;
+        }
+
+        .result-probability {
+            font-size: 1rem;
+            color: #718096;
+            margin-top: 0.5rem;
+        }
+
+        .breakdown-section {
+            margin-bottom: 2rem;
+        }
+
+        .breakdown-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 1rem;
+        }
+
+        .breakdown-items {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .breakdown-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .breakdown-item:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .breakdown-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            background: linear-gradient(135deg, #4FD1C7 0%, #38B2AC 100%);
+            flex-shrink: 0;
+        }
+
+        .breakdown-content h4 {
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 0.25rem;
+        }
+
+        .breakdown-content p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .ai-suggestions {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .ai-suggestions h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 1rem;
+        }
+
+        .ai-suggestions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .ai-suggestions li {
+            padding: 0.5rem 0;
+            color: #4A5568;
+            font-size: 0.9rem;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .ai-suggestions li:before {
+            content: "•";
+            color: #4FD1C7;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .chart-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        .chart-container.large {
+            height: 300px;
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input[type="file"],
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input[type="file"]:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4FD1C7;
+            box-shadow: 0 0 0 3px rgba(79, 209, 199, 0.1);
+        }
+
+        .error-message {
+            color: #E53E3E;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .disclaimer {
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 4px solid #4FD1C7;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: #4A5568;
+        }
+
+        .table-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .table-section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-section th,
+        .table-section td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #E2E8F0;
+            font-size: 0.9rem;
+        }
+
+        .table-section th {
+            background: #F7FAFC;
+            font-weight: 600;
+            color: #2D3748;
+        }
+
+        .guideline-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .guideline-header {
+            cursor: pointer;
+            padding: 1rem;
+            background: linear-gradient(135deg, #2D3748 0%, #4A5568 100%);
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0;
+        }
+
+        .guideline-header:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(45, 55, 72, 0.3);
+        }
+
+        .guideline-table {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .guideline-table.visible {
+            max-height: 500px;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 2rem;
+            color: #4A5568;
+        }
+
+        .spinner {
+            display: inline-block;
+            border: 4px solid #E2E8F0;
+            border-top: 4px solid #4FD1C7;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .green { color: #38A169; }
+        .red { color: #E53E3E; }
+        .orange { color: #ED8936; }
+        .black { color: #2D3748; }
+
+        .null-cell {
+            background-color: #F7FAFC;
+            color: #A0AEC0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-right: 0;
+                padding: 1rem;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="/static/mycaring_logo.png" alt="Diabetes Risk Kiosk Logo" style="display:block; margin:0 auto; max-width:180px; margin-bottom:18px;">
-        <!-- Optionally, add a small heading below the logo -->
-        <!-- <h2 style="margin-bottom:18px;">Universiti Malaya Diabetes Risk Kiosk</h2> -->
-        <p><strong>Disclaimer:</strong> This tool is for informational purposes only and uses Malaysian clinical guidelines. Consult a doctor for a proper diagnosis.</p>
-        <form method="post" enctype="multipart/form-data" id="analysisForm" onsubmit="showLoading()">
-            <div class="form-group">
-                <label for="file">Upload Clinical Report (PDF):</label>
-                <input type="file" name="file" id="file" accept=".pdf" required aria-label="Upload clinical report PDF">
-                <span id="file-error" class="error-message">Please upload a PDF file.</span>
-            </div>
-            <div class="form-group">
-                <label for="heart_disease">Heart Disease (Past/Current):</label>
-                <select name="heart_disease" id="heart_disease" required aria-label="Select heart disease status">
-                    <option value="">Select</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                </select>
-                <span id="heart-disease-error" class="error-message">Please select an option.</span>
-            </div>
-            <div class="form-group">
-                <label for="smoking_history">Smoking History:</label>
-                <select name="smoking_history" id="smoking_history" required aria-label="Select smoking history">
-                    <option value="">Select</option>
-                    <option value="No Info">No Info</option>
-                    <option value="never">Never</option>
-                    <option value="former">Former</option>
-                    <option value="current">Current</option>
-                    <option value="not current">Not Current</option>
-                </select>
-                <span id="smoking-history-error" class="error-message">Please select an option.</span>
-            </div>
-            <div class="buttons">
-                <button type="submit" id="submitBtn" disabled>Analyze Report and Predict Risk</button>
-                <button type="reset" onclick="resetResults()">Reset Form</button>
-            </div>
-        </form>
-        <div id="loadingSpinner" class="hidden">Processing... <span class="spinner"></span></div>
-
-        {% if result %}
-        <div class="results-section">
-            <div id="resultDiv" class="result {{ color }}" role="alert">
-                {{ result }}
+    <div class="main-container">
+        <div class="main-content">
+            <div class="header">
+                <h1>Hello, Patient! Your Health Report</h1>
+                <p class="header-subtitle">MyCaringBot - Health History Analysis</p>
             </div>
 
-            <!-- AI Recommendations Streaming Output -->
-            <div id="ollama-output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 15px;"
-                role="region" aria-live="polite" aria-label="AI Recommendations">
-                <strong>AI Recommendations will appear here:</strong>
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This tool is for informational purposes only and uses Malaysian clinical guidelines. Consult a doctor for a proper diagnosis.
             </div>
 
-            <script>
-                function startStreaming() {
-                    const eventSource = new EventSource("/stream_recommendation");
-                    const outputDiv = document.getElementById("ollama-output");
-                    outputDiv.innerHTML = "";
+            <form method="post" enctype="multipart/form-data" id="analysisForm" onsubmit="showLoading()">
+                <div class="form-section">
+                    <div class="submit-button-container" style="margin-bottom: 2rem;">
+                        <button type="submit" id="submitBtn" class="submit-button" disabled>
+                            <span>+</span> Submit a New Report
+                        </button>
+                    </div>
 
-                    eventSource.onmessage = function(event) {
-                        const data = JSON.parse(event.data);
-                        if (data.type === "result") {
-                            outputDiv.innerHTML += data.text;  // Append streamed text
-                        } else if (data.type === "end") {
-                            eventSource.close();
-                        } else if (data.type === "error") {
-                            outputDiv.innerHTML = "<span style='color:red;'>" + data.text + "</span>";
-                            eventSource.close();
-                        }
-                    };
+                    <div class="form-group">
+                        <label for="file">Upload Clinical Report (PDF):</label>
+                        <input type="file" name="file" id="file" accept=".pdf" required aria-label="Upload clinical report PDF">
+                        <span id="file-error" class="error-message">Please upload a PDF file.</span>
+                    </div>
 
-                    eventSource.onerror = function() {
-                        outputDiv.innerHTML += "<br><span style='color:red;'>Error receiving AI response.</span>";
-                        eventSource.close();
-                    };
-                }
+                    <div class="form-group">
+                        <label for="heart_disease">Heart Disease (Past/Current):</label>
+                        <select name="heart_disease" id="heart_disease" required aria-label="Select heart disease status">
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                        <span id="heart-disease-error" class="error-message">Please select an option.</span>
+                    </div>
 
-                // Start streaming only if there is a result
-                document.addEventListener("DOMContentLoaded", function() {
-                    {% if result %}
-                        startStreaming();
-                    {% endif %}
-                });
-            </script>
+                    <div class="form-group">
+                        <label for="smoking_history">Smoking History:</label>
+                        <select name="smoking_history" id="smoking_history" required aria-label="Select smoking history">
+                            <option value="">Select</option>
+                            <option value="No Info">No Info</option>
+                            <option value="never">Never</option>
+                            <option value="former">Former</option>
+                            <option value="current">Current</option>
+                            <option value="not current">Not Current</option>
+                        </select>
+                        <span id="smoking-history-error" class="error-message">Please select an option.</span>
+                    </div>
+                </div>
+            </form>
+
+            <div id="loadingSpinner" class="loading-spinner hidden">
+                Processing your report...
+                <span class="spinner"></span>
+            </div>
+
+            {% if result %}
+            <div class="result-card">
+                <div class="result-header">
+                    <div class="result-icon {% if 'Low Risk' in result or '0.0%' in result %}success{% elif 'Medium Risk' in result %}warning{% else %}danger{% endif %}">
+                        {% if 'Low Risk' in result or '0.0%' in result %}✓{% elif 'Medium Risk' in result %}⚠{% else %}⚡{% endif %}
+                    </div>
+                    <div>
+                        <div class="result-title">
+                            {% if 'Low Risk' in result or '0.0%' in result %}Great News!{% elif 'Medium Risk' in result %}Attention Needed{% else %}High Risk Detected{% endif %}
+                        </div>
+                        <div class="result-subtitle">
+                            {% if 'Low Risk' in result or '0.0%' in result %}Your Health is On Track{% elif 'Medium Risk' in result %}Monitor Your Health{% else %}Please Consult a Doctor{% endif %}
+                        </div>
+                        <div class="result-probability">{{ result }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="breakdown-section">
+                <h2 class="breakdown-title">Here's Your Health Breakdown</h2>
+                
+                <div class="breakdown-items">
+                    <div class="breakdown-item">
+                        <div class="breakdown-icon">💓</div>
+                        <div class="breakdown-content">
+                            <h4>Your Vitals:</h4>
+                            <p>Recent readings are in the {% if diagnosis %}{{ 'healthy' if diagnosis.glucose.color == 'green' else 'concerning' }}{% else %}normal{% endif %} range, which is {% if diagnosis %}{{ 'great!' if diagnosis.glucose.color == 'green' else 'needs attention.' }}{% else %}great!{% endif %}</p>
+                        </div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-icon">🍎</div>
+                        <div class="breakdown-content">
+                            <h4>Diet:</h4>
+                            <p>Keep up the good work with your balanced meals.</p>
+                        </div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-icon">😴</div>
+                        <div class="breakdown-content">
+                            <h4>Sleep:</h4>
+                            <p>Consistent sleep patterns are boosting your well-being.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-suggestions">
+                    <h3><span style="font-size: 1.2rem;">💡</span> AI Suggestions</h3>
+                    <div id="ollama-output" role="region" aria-live="polite" aria-label="AI Recommendations">
+                        <ul>
+                            <li>Activity Tip: Aim for 3-minute walk today.</li>
+                            <li>Hydration Goal</li>
+                            <li>Drink 8 glasses in water daily.</li>
+                            <li>Mindfulness to deep breathing</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
 
             {% if diagnosis %}
-            <div class="chart-container" role="region" aria-label="Vital Signs Visualization">
-                <h3>Vital Signs Overview</h3>
-                <canvas id="vitalsChart"></canvas>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Vital Signs Overview</h3>
+                    <div class="chart-container">
+                        <canvas id="vitalsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Prediction Confidence</h3>
+                    <div class="chart-container">
+                        <canvas id="confidenceChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Health Risk Profile</h3>
+                    <div class="chart-container large">
+                        <canvas id="riskProfileChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Risk Factor Contribution</h3>
+                    <div class="chart-container">
+                        <canvas id="riskFactorChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <div class="chart-container" role="region" aria-label="Diabetes Risk Confidence">
-                <h3>Prediction Confidence</h3>
-                <canvas id="confidenceChart"></canvas>
+            {% endif %}
+            {% endif %}
+
+            {% if diagnosis %}
+            <div class="table-section">
+                <table>
+                    <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
+                    {% if 'age' in diagnosis %}
+                    <tr>
+                        <td>Age</td>
+                        <td>{{ diagnosis.age.value }}</td>
+                        <td>{{ diagnosis.age.unit }}</td>
+                        <td class="{{ diagnosis.age.color }}">{{ diagnosis.age.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>Age</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'sex' in diagnosis %}
+                    <tr>
+                        <td>Gender</td>
+                        <td>{{ diagnosis.sex.value }}</td>
+                        <td>{{ diagnosis.sex.unit }}</td>
+                        <td class="{{ diagnosis.sex.color }}">{{ diagnosis.sex.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>Gender</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'bmi' in diagnosis %}
+                    <tr>
+                        <td>BMI</td>
+                        <td>{{ diagnosis.bmi.value | round(1) }}</td>
+                        <td>{{ diagnosis.bmi.unit }}</td>
+                        <td class="{{ diagnosis.bmi.color }}">{{ diagnosis.bmi.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>BMI</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'heart_disease' in diagnosis %}
+                    <tr>
+                        <td>Heart Disease</td>
+                        <td>{{ diagnosis.heart_disease.value }}</td>
+                        <td>{{ diagnosis.heart_disease.unit }}</td>
+                        <td class="{{ diagnosis.heart_disease.color }}">{{ diagnosis.heart_disease.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>Heart Disease</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'smoking_history' in diagnosis %}
+                    <tr>
+                        <td>Smoking History</td>
+                        <td>{{ diagnosis.smoking_history.value }}</td>
+                        <td>{{ diagnosis.smoking_history.unit }}</td>
+                        <td class="{{ diagnosis.smoking_history.color }}">{{ diagnosis.smoking_history.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>Smoking History</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'hypertension' in diagnosis %}
+                    <tr>
+                        <td>Hypertension</td>
+                        <td>{{ diagnosis.hypertension.value }}</td>
+                        <td>{{ diagnosis.hypertension.unit }}</td>
+                        <td class="{{ diagnosis.hypertension.color }}">{{ diagnosis.hypertension.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td>Hypertension</td><td class="null-cell">-</td><td class="null-cell">-</td><td class="null-cell">-</td></tr>
+                    {% endif %}
+                    {% if 'glucose' in diagnosis %}
+                    <tr>
+                        <td>Blood Glucose ({{ diagnosis.glucose.category }})</td>
+                        <td>{{ diagnosis.glucose.value_mg | round(1) }}</td>
+                        <td>mg/dL</td>
+                        <td rowspan="2" class="{{ diagnosis.glucose.color }}">{{ diagnosis.glucose.status }}</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>{{ diagnosis.glucose.value_mmol | round(1) }}</td>
+                        <td>mmol/L</td>
+                    </tr>
+                    {% endif %}
+                    {% if 'hba1c' in diagnosis %}
+                    <tr>
+                        <td>HbA1c Level</td>
+                        <td>{{ diagnosis.hba1c.value_percent | round(1) }}</td>
+                        <td>%</td>
+                        <td rowspan="2" class="{{ diagnosis.hba1c.color }}">{{ diagnosis.hba1c.status }}</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>{{ diagnosis.hba1c.value_mmol | round(0) }}</td>
+                        <td>mmol/mol</td>
+                    </tr>
+                    {% endif %}
+                </table>
             </div>
-            <div class="chart-container" role="region" aria-label="Health Risk Profile">
-                <h3>Health Risk Profile</h3>
-                <canvas id="riskProfileChart"></canvas>
+            {% endif %}
+
+            <div class="guideline-section">
+                <h3 class="guideline-header" onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
+                <table class="guideline-table">
+                    <tr><th>Status</th><th>Range</th></tr>
+                    <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
+                    <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
+                    <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
+                    <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
+                </table>
             </div>
-            <div class="chart-container" role="region" aria-label="Risk Factor Contribution">
-                <h3>Risk Factor Contribution</h3>
-                <canvas id="riskFactorChart"></canvas>
+
+            <div class="guideline-section">
+                <h3 class="guideline-header" onclick="toggleGuideline(this)">BMI Benchmarks (kg/m²)</h3>
+                <table class="guideline-table">
+                    <tr><th>Status</th><th>Range</th></tr>
+                    <tr><td>Underweight</td><td>&lt;18.5</td></tr>
+                    <tr><td>Normal range</td><td>18.5-24.9</td></tr>
+                    <tr><td>Overweight</td><td>&ge;25.0</td></tr>
+                    <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
+                    <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
+                    <tr><td>Obese class II</td><td>35.0-39.9</td></tr>
+                    <tr><td>Obese class III</td><td>&ge;40.0</td></tr>
+                </table>
+            </div>
+
+            <div class="guideline-section">
+                <h3 class="guideline-header" onclick="toggleGuideline(this)">Glucose Benchmarks (mmol/L)</h3>
+                <table class="guideline-table">
+                    <tr><th>Category</th><th>Normal</th><th>Prediabetes</th><th>T2DM Diagnosis</th></tr>
+                    <tr><td>Fasting</td><td>3.9-6.0</td><td>6.1-6.9</td><td>&ge;7.0</td></tr>
+                    <tr><td>Random</td><td>3.9-7.7</td><td>7.8-11.0</td><td>&ge;11.1</td></tr>
+                </table>
+            </div>
+
+            <div class="guideline-section">
+                <h3 class="guideline-header" onclick="toggleGuideline(this)">HbA1c Benchmarks</h3>
+                <table class="guideline-table">
+                    <tr><th>Status</th><th>%</th><th>mmol/mol</th></tr>
+                    <tr><td>Normal</td><td>&lt;5.7</td><td>&lt;39</td></tr>
+                    <tr><td>Prediabetes</td><td>5.7-6.2</td><td>39-44</td></tr>
+                    <tr><td>Diabetes</td><td>&ge;6.3</td><td>&ge;45</td></tr>
+                </table>
+            </div>
+
+            {% if error %}
+            <div style="background: #FED7D7; color: #C53030; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                {{ error }}
             </div>
             {% endif %}
         </div>
-        {% endif %}
 
-
-        {% if diagnosis %}
-        <div id="diagnosisTableDiv" class="results-section">
-            <table>
-                <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
-                {% if 'age' in diagnosis %}
-                <tr>
-                    <td>Age</td>
-                    <td>{{ diagnosis.age.value }}</td>
-                    <td>{{ diagnosis.age.unit }}</td>
-                    <td class="{{ diagnosis.age.color }}">{{ diagnosis.age.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>Age</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'sex' in diagnosis %}
-                <tr>
-                    <td>Gender</td>
-                    <td>{{ diagnosis.sex.value }}</td>
-                    <td>{{ diagnosis.sex.unit }}</td>
-                    <td class="{{ diagnosis.sex.color }}">{{ diagnosis.sex.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>Gender</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'bmi' in diagnosis %}
-                <tr>
-                    <td>BMI</td>
-                    <td>{{ diagnosis.bmi.value | round(1) }}</td>
-                    <td>{{ diagnosis.bmi.unit }}</td>
-                    <td class="{{ diagnosis.bmi.color }}">{{ diagnosis.bmi.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>BMI</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'heart_disease' in diagnosis %}
-                <tr>
-                    <td>Heart Disease</td>
-                    <td>{{ diagnosis.heart_disease.value }}</td>
-                    <td>{{ diagnosis.heart_disease.unit }}</td>
-                    <td class="{{ diagnosis.heart_disease.color }}">{{ diagnosis.heart_disease.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>Heart Disease</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'smoking_history' in diagnosis %}
-                <tr>
-                    <td>Smoking History</td>
-                    <td>{{ diagnosis.smoking_history.value }}</td>
-                    <td>{{ diagnosis.smoking_history.unit }}</td>
-                    <td class="{{ diagnosis.smoking_history.color }}">{{ diagnosis.smoking_history.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>Smoking History</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'hypertension' in diagnosis %}
-                <tr>
-                    <td>Hypertension</td>
-                    <td>{{ diagnosis.hypertension.value }}</td>
-                    <td>{{ diagnosis.hypertension.unit }}</td>
-                    <td class="{{ diagnosis.hypertension.color }}">{{ diagnosis.hypertension.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td>Hypertension</td><td class="null-cell"></td><td class="null-cell"></td><td class="null-cell"></td></tr>
-                {% endif %}
-                {% if 'glucose' in diagnosis %}
-                <tr>
-                    <td>Blood Glucose ({{ diagnosis.glucose.category }})</td>
-                    <td>{{ diagnosis.glucose.value_mg | round(1) }}</td>
-                    <td>mg/dL</td>
-                    <td rowspan="2" class="{{ diagnosis.glucose.color }}">{{ diagnosis.glucose.status }}</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td>{{ diagnosis.glucose.value_mmol | round(1) }}</td>
-                    <td>mmol/L</td>
-                </tr>
-                {% endif %}
-                {% if 'hba1c' in diagnosis %}
-                <tr>
-                    <td>HbA1c Level</td>
-                    <td>{{ diagnosis.hba1c.value_percent | round(1) }}</td>
-                    <td>%</td>
-                    <td rowspan="2" class="{{ diagnosis.hba1c.color }}">{{ diagnosis.hba1c.status }}</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td>{{ diagnosis.hba1c.value_mmol | round(0) }}</td>
-                    <td>mmol/mol</td>
-                </tr>
-                {% endif %}
-            </table>
+        <div class="sidebar">
+            <div class="sidebar-icon" title="Menu">☰</div>
+            <div class="sidebar-icon" title="Favorites">♡</div>
+            <div class="sidebar-icon" title="Calendar">📅</div>
+            <div class="sidebar-icon" title="Reports">📋</div>
         </div>
-        {% endif %}
-
-        <div class="guideline-box">
-            <h3 onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
-            <table class="guideline-table">
-                <tr><th>Status</th><th>Range</th></tr>
-                <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
-                <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
-                <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
-                <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
-            </table>
-        </div>
-        <div class="guideline-box">
-            <h3 onclick="toggleGuideline(this)">BMI Benchmarks (kg/m²)</h3>
-            <table class="guideline-table">
-                <tr><th>Status</th><th>Range</th></tr>
-                <tr><td>Underweight</td><td>&lt;18.5</td></tr>
-                <tr><td>Normal range</td><td>18.5-24.9</td></tr>
-                <tr><td>Overweight</td><td>&ge;25.0</td></tr>
-                <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
-                <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
-                <tr><td>Obese class II</td><td>35.0-39.9</td></tr>
-                <tr><td>Obese class III</td><td>&ge;40.0</td></tr>
-            </table>
-        </div>
-        <div class="guideline-box">
-            <h3 onclick="toggleGuideline(this)">Glucose Benchmarks (mmol/L)</h3>
-            <table class="guideline-table">
-                <tr><th>Category</th><th>Normal</th><th>Prediabetes</th><th>T2DM Diagnosis</th></tr>
-                <tr><td>Fasting</td><td>3.9-6.0</td><td>6.1-6.9</td><td>&ge;7.0</td></tr>
-                <tr><td>Random</td><td>3.9-7.7</td><td>7.8-11.0</td><td>&ge;11.1</td></tr>
-            </table>
-        </div>
-        <div class="guideline-box">
-            <h3 onclick="toggleGuideline(this)">HbA1c Benchmarks</h3>
-            <table class="guideline-table">
-                <tr><th>Status</th><th>%</th><th>mmol/mol</th></tr>
-                <tr><td>Normal</td><td>&lt;5.7</td><td>&lt;39</td></tr>
-                <tr><td>Prediabetes</td><td>5.7-6.2</td><td>39-44</td></tr>
-                <tr><td>Diabetes</td><td>&ge;6.3</td><td>&ge;45</td></tr>
-            </table>
-        </div>
-
-        {% if error %}
-        <div id="errorDiv" class="error">
-            {{ error }}
-        </div>
-        {% endif %}
     </div>
+
     <script>
         function showLoading() {
             document.getElementById('loadingSpinner').classList.remove('hidden');
@@ -369,24 +845,22 @@ html_page = """
 
         function resetResults() {
             document.getElementById('analysisForm').reset();
-            const resultDiv = document.getElementById('resultDiv');
-            const explanationDiv = document.getElementById('explanationDiv');
-            const diagnosisTableDiv = document.getElementById('diagnosisTableDiv');
-            const errorDiv = document.getElementById('errorDiv');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const vitalsChart = document.getElementById('vitalsChart');
-            const confidenceChart = document.getElementById('confidenceChart');
-            const riskProfileChart = document.getElementById('riskProfileChart');
-            const riskFactorChart = document.getElementById('riskFactorChart');
-            if (resultDiv) resultDiv.classList.add('hidden');
-            if (explanationDiv) explanationDiv.classList.add('hidden');
-            if (diagnosisTableDiv) diagnosisTableDiv.classList.add('hidden');
-            if (errorDiv) errorDiv.classList.add('hidden');
-            if (loadingSpinner) loadingSpinner.classList.add('hidden');
-            if (vitalsChart) vitalsChart.parentNode.classList.add('hidden');
-            if (confidenceChart) confidenceChart.parentNode.classList.add('hidden');
-            if (riskProfileChart) riskProfileChart.parentNode.classList.add('hidden');
-            if (riskFactorChart) riskFactorChart.parentNode.classList.add('hidden');
+            // Hide all result elements
+            const elementsToHide = [
+                'resultDiv', 'explanationDiv', 'diagnosisTableDiv', 'errorDiv', 'loadingSpinner'
+            ];
+            elementsToHide.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.classList.add('hidden');
+            });
+
+            // Hide charts
+            const charts = ['vitalsChart', 'confidenceChart', 'riskProfileChart', 'riskFactorChart'];
+            charts.forEach(chartId => {
+                const chart = document.getElementById(chartId);
+                if (chart && chart.parentNode) chart.parentNode.classList.add('hidden');
+            });
+
             document.querySelectorAll('.error-message').forEach(span => span.style.display = 'none');
             document.querySelectorAll('.guideline-table').forEach(table => table.classList.remove('visible'));
             validateForm();
@@ -402,7 +876,6 @@ html_page = """
             const heartDisease = document.getElementById('heart_disease');
             const smokingHistory = document.getElementById('smoking_history');
             const submitBtn = document.getElementById('submitBtn');
-
             const fileError = document.getElementById('file-error');
             const heartDiseaseError = document.getElementById('heart-disease-error');
             const smokingHistoryError = document.getElementById('smoking-history-error');
@@ -417,6 +890,36 @@ html_page = """
 
             submitBtn.disabled = !(isFileValid && isHeartDiseaseValid && isSmokingHistoryValid);
         }
+
+        // AI Recommendations Streaming
+        {% if result %}
+        function startStreaming() {
+            const eventSource = new EventSource("/stream_recommendation");
+            const outputDiv = document.getElementById("ollama-output");
+            outputDiv.innerHTML = "";
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === "result") {
+                    outputDiv.innerHTML += data.text;
+                } else if (data.type === "end") {
+                    eventSource.close();
+                } else if (data.type === "error") {
+                    outputDiv.innerHTML = "<span style='color:#E53E3E;'>" + data.text + "</span>";
+                    eventSource.close();
+                }
+            };
+            
+            eventSource.onerror = function() {
+                outputDiv.innerHTML += "<br><span style='color:#E53E3E;'>Error receiving AI response.</span>";
+                eventSource.close();
+            };
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            startStreaming();
+        });
+        {% endif %}
 
         {% if diagnosis %}
         // Vital Signs Chart
@@ -433,27 +936,51 @@ html_page = """
                         {{ diagnosis.hba1c.value_percent | round(1) if 'hba1c' in diagnosis else 0 }}
                     ],
                     backgroundColor: [
-                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848'
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181'
                     ],
-                    borderColor: '#3B3C50',
-                    borderWidth: 2
+                    borderColor: '#2D3748',
+                    borderWidth: 2,
+                    borderRadius: 8
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true },
-                    x: { ticks: { color: '#3B3C50', font: { size: 14 } } }
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#E2E8F0'
+                        },
+                        ticks: {
+                            color: '#4A5568'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#4A5568',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
                 },
                 plugins: {
+                    legend: {
+                        display: false
+                    },
                     annotation: {
                         annotations: {
                             bmiNormal: {
                                 type: 'line',
                                 yMin: 18.5,
                                 yMax: 18.5,
-                                borderColor: '#9ED048',
+                                borderColor: '#68D391',
                                 borderWidth: 2,
                                 label: { content: 'BMI Normal Min', enabled: true, position: 'start' }
                             },
@@ -461,7 +988,7 @@ html_page = """
                                 type: 'line',
                                 yMin: 24.9,
                                 yMax: 24.9,
-                                borderColor: '#9ED048',
+                                borderColor: '#68D391',
                                 borderWidth: 2,
                                 label: { content: 'BMI Normal Max', enabled: true, position: 'start' }
                             },
@@ -471,7 +998,7 @@ html_page = """
                                 xMax: 1,
                                 yMin: {{ 7.7 * 18.0 if diagnosis.glucose.category == 'Random' else 6.0 * 18.0 if 'glucose' in diagnosis else 0 }},
                                 yMax: {{ 7.7 * 18.0 if diagnosis.glucose.category == 'Random' else 6.0 * 18.0 if 'glucose' in diagnosis else 0 }},
-                                borderColor: '#9ED048',
+                                borderColor: '#68D391',
                                 borderWidth: 2,
                                 label: { content: 'Glucose Normal Max', enabled: true, position: 'start' }
                             },
@@ -481,7 +1008,7 @@ html_page = """
                                 xMax: 2,
                                 yMin: 5.7,
                                 yMax: 5.7,
-                                borderColor: '#9ED048',
+                                borderColor: '#68D391',
                                 borderWidth: 2,
                                 label: { content: 'HbA1c Normal Max', enabled: true, position: 'start' }
                             }
@@ -495,22 +1022,54 @@ html_page = """
         const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
         const probMatch = '{{ result }}'.match(/Probability of Diabetes: (\d+\.\d)%/);
         const diabetesProb = probMatch ? parseFloat(probMatch[1]) : 0;
+        
         new Chart(confidenceCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Diabetes Risk', 'Normal'],
                 datasets: [{
                     data: [diabetesProb, 100 - diabetesProb],
-                    backgroundColor: ['#D04848', '#9ED048'],
-                    borderColor: '#3B3C50',
-                    borderWidth: 2
+                    backgroundColor: ['#FC8181', '#68D391'],
+                    borderColor: '#FFFFFF',
+                    borderWidth: 3
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } }
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#4A5568',
+                            font: { size: 12 }
+                        }
+                    }
                 }
-            }
+            },
+            plugins: [{
+                beforeDraw: function(chart) {
+                    const width = chart.width,
+                          height = chart.height,
+                          ctx = chart.ctx;
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = fontSize + "em Arial";
+                    ctx.fillStyle = "#2D3748";
+                    ctx.textBaseline = "middle";
+                    const text = Math.round(100 - diabetesProb) + "%";
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+                    ctx.fillText(text, textX, textY - 10);
+                    ctx.font = (fontSize * 0.6) + "em Arial";
+                    ctx.fillStyle = "#718096";
+                    const subText = diabetesProb < 30 ? "LOW RISK" : diabetesProb < 70 ? "MEDIUM RISK" : "HIGH RISK";
+                    const subTextX = Math.round((width - ctx.measureText(subText).width) / 2);
+                    ctx.fillText(subText, subTextX, textY + 15);
+                    ctx.save();
+                }
+            }]
         });
 
         // Risk Profile Chart
@@ -529,29 +1088,51 @@ html_page = """
                         {{ 100 if 'heart_disease' in diagnosis and diagnosis.heart_disease.status == 'Yes' else 0 }},
                         {{ 0 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status == 'Never' else 50 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status in ['Former', 'Not Current'] else 100 if 'smoking_history' in diagnosis else 0 }}
                     ],
-                    backgroundColor: 'rgba(158, 208, 72, 0.2)',
-                    borderColor: '#9ED048',
+                    backgroundColor: 'rgba(79, 209, 199, 0.2)',
+                    borderColor: '#4FD1C7',
                     borderWidth: 2,
                     pointBackgroundColor: [
-                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#F4A261',
-                        '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#3B3C50'
-                    ]
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'red' ? '#FC8181' : '#F6AD55',
+                        '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'red' ? '#FC8181' : '#2D3748'
+                    ],
+                    pointBorderColor: '#FFFFFF',
+                    pointBorderWidth: 2
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     r: {
                         beginAtZero: true,
                         max: 100,
-                        ticks: { stepSize: 20, color: '#3B3C50', font: { size: 12 } }
+                        grid: {
+                            color: '#E2E8F0'
+                        },
+                        pointLabels: {
+                            color: '#4A5568',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        ticks: {
+                            stepSize: 20,
+                            color: '#A0AEC0',
+                            font: {
+                                size: 10
+                            },
+                            backdropColor: 'transparent'
+                        }
                     }
                 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } },
+                    legend: {
+                        display: false
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -582,19 +1163,27 @@ html_page = """
                 datasets: [{
                     data: [23.07, 10.50, 2.84, 0.80, 0.16],
                     backgroundColor: [
-                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.age.color if 'age' in diagnosis else 'black' }}' === '' ? '#3B3C50' : '#3B3C50',
-                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
-                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848'
+                        '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.age.color if 'age' in diagnosis else 'black' }}' === '' ? '#2D3748' : '#2D3748',
+                        '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181',
+                        '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#68D391' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F6AD55' : '#FC8181'
                     ],
-                    borderColor: '#3B3C50',
+                    borderColor: '#FFFFFF',
                     borderWidth: 2
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } },
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#4A5568',
+                            font: { size: 12 }
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -616,11 +1205,12 @@ html_page = """
         });
         {% endif %}
 
+        // Event listeners
         document.getElementById('file').addEventListener('change', validateForm);
         document.getElementById('heart_disease').addEventListener('change', validateForm);
         document.getElementById('smoking_history').addEventListener('change', validateForm);
 
-        // Initial validation on page load
+        // Initial validation
         validateForm();
     </script>
 </body>

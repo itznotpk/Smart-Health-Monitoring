@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universiti Malaya Diabetes Risk Kiosk from Clinical Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #F5F6F5; color: #3B3C50; }
+        .container { margin-top: 40px; max-width: 700px; margin-left: auto; margin-right: auto; padding: 20px; }
+        .form-group { margin: 20px 0; display: flex; flex-direction: column; align-items: center; }
+        .form-group label { font-weight: bold; margin-bottom: 8px; text-align: center; width: 100%; font-size: 16px; color: #3B3C50; }
+        input[type="file"], select { padding: 12px; width: 280px; border: 2px solid #3B3C50; border-radius: 6px; font-size: 16px; background-color: #FFFFFF; }
+        .error-message { color: #D04848; font-size: 14px; margin-top: 6px; display: none; }
+        .buttons { margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        button { padding: 12px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s ease; }
+        button[type="submit"] { background-color: #9ED048; color: #3B3C50; }
+        button[type="submit"]:hover { background-color: #7CA63A; }
+        button[type="submit"]:disabled { background-color: #CCCCCC; cursor: not-allowed; }
+        button[type="reset"], button[type="button"] { background-color: #3B3C50; color: #FFFFFF; }
+        button[type="reset"]:hover, button[type="button"]:hover { background-color: #2A2B3A; }
+        .result { font-size: 24px; margin-top: 30px; font-weight: bold; padding: 20px; border-radius: 6px; }
+        .explanation { font-size: 16px; margin-top: 15px; padding: 15px; background-color: #FFFFFF; border: 2px solid #3B3C50; border-radius: 6px; }
+        .green { color: #9ED048; background-color: #E7F2D3; }
+        .red { color: #D04848; background-color: #F8D7DA; }
+        .orange { color: #F4A261; background-color: #FFF3CD; }
+        .black { color: #3B3C50; }
+        .error { color: #D04848; font-weight: bold; background-color: #F8D7DA; padding: 15px; border-radius: 6px; margin: 15px 0; }
+        table { margin: 25px auto; border-collapse: collapse; width: 85%; }
+        th, td { border: 2px solid #3B3C50; padding: 10px; text-align: left; }
+        th { background-color: #3B3C50; color: #FFFFFF; }
+        h1 { font-size: 28px; color: #3B3C50; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        h3 { font-size: 20px; color: #3B3C50; }
+        .guideline-box { border: 2px solid #3B3C50; padding: 15px; margin: 25px auto; width: 85%; border-radius: 6px; background-color: #FFFFFF; }
+        .guideline-box h3 { cursor: pointer; margin: 0; padding: 12px; background-color: #3B3C50; color: #FFFFFF; border-radius: 6px; transition: background-color 0.3s ease; }
+        .guideline-box h3:hover { background-color: #2A2B3A; }
+        .guideline-table { transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 0; opacity: 0; overflow: hidden; }
+        .guideline-table.visible { max-height: 500px; opacity: 1; }
+        .null-cell { background-color: #CCCCCC; }
+        .results-section { margin-top: 40px; }
+        .hidden { display: none !important; }
+        #loadingSpinner { margin-top: 25px; font-size: 18px; color: #3B3C50; }
+        .spinner { display: inline-block; border: 5px solid #F5F6F5; border-top: 5px solid #9ED048; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-left: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .chart-container { margin: 30px auto; max-width: 600px; }
+        canvas { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="/static/mycaring_logo.png" alt="Diabetes Risk Kiosk Logo" style="display:block; margin:0 auto; max-width:180px; margin-bottom:18px;">
+        <p><strong>Disclaimer:</strong> This tool is for informational purposes only and uses Malaysian clinical guidelines. Consult a doctor for a proper diagnosis.</p>
+
+        <form id="analysisForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Upload Clinical Report (PDF):</label>
+                <input type="file" name="file" id="file" accept=".pdf" required aria-label="Upload clinical report PDF">
+                <span id="file-error" class="error-message">Please upload a PDF file.</span>
+            </div>
+            <div class="form-group">
+                <label for="heart_disease">Heart Disease (Past/Current):</label>
+                <select name="heart_disease" id="heart_disease" required aria-label="Select heart disease status">
+                    <option value="">Select</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+                <span id="heart-disease-error" class="error-message">Please select an option.</span>
+            </div>
+            <div class="form-group">
+                <label for="smoking_history">Smoking History:</label>
+                <select name="smoking_history" id="smoking_history" required aria-label="Select smoking history">
+                    <option value="">Select</option>
+                    <option value="No Info">No Info</option>
+                    <option value="never">Never</option>
+                    <option value="former">Former</option>
+                    <option value="current">Current</option>
+                    <option value="not current">Not Current</option>
+                </select>
+                <span id="smoking-history-error" class="error-message">Please select an option.</span>
+            </div>
+            <div class="buttons">
+                <button type="submit" id="submitBtn" disabled>Analyze Report and Predict Risk</button>
+                <button type="reset" onclick="resetResults()">Reset Form</button>
+            </div>
+        </form>
+
+        <div id="loadingSpinner" class="hidden">Processing... <span class="spinner"></span></div>
+
+        <!-- Result Section -->
+        <div id="resultDiv" class="result hidden" role="alert"></div>
+
+        <!-- AI Recommendations -->
+        <div id="ollama-output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 15px; display:none;"
+            role="region" aria-live="polite" aria-label="AI Recommendations">
+        </div>
+
+        <!-- Placeholder for charts -->
+        <div class="chart-container hidden" id="vitalsChartContainer">
+            <h3>Vital Signs Overview</h3>
+            <canvas id="vitalsChart"></canvas>
+        </div>
+        <div class="chart-container hidden" id="confidenceChartContainer">
+            <h3>Prediction Confidence</h3>
+            <canvas id="confidenceChart"></canvas>
+        </div>
+        <div class="chart-container hidden" id="riskProfileChartContainer">
+            <h3>Health Risk Profile</h3>
+            <canvas id="riskProfileChart"></canvas>
+        </div>
+        <div class="chart-container hidden" id="riskFactorChartContainer">
+            <h3>Risk Factor Contribution</h3>
+            <canvas id="riskFactorChart"></canvas>
+        </div>
+
+        <!-- Guidelines -->
+        <div class="guideline-box">
+            <h3 onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
+            <table class="guideline-table">
+                <tr><th>Status</th><th>Range</th></tr>
+                <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
+                <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
+                <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
+                <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
+            </table>
+        </div>
+        <div class="guideline-box">
+            <h3 onclick="toggleGuideline(this)">BMI Benchmarks (kg/m²)</h3>
+            <table class="guideline-table">
+                <tr><th>Status</th><th>Range</th></tr>
+                <tr><td>Underweight</td><td>&lt;18.5</td></tr>
+                <tr><td>Normal range</td><td>18.5-24.9</td></tr>
+                <tr><td>Overweight</td><td>&ge;25.0</td></tr>
+                <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
+                <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
+                <tr><td>Obese class II</td><td>35.0-39.9</td></tr>
+                <tr><td>Obese class III</td><td>&ge;40.0</td></tr>
+            </table>
+        </div>
+
+        <!-- Additional guidelines can stay as-is -->
+    </div>
+
+    <script>
+        // Form validation
+        function validateForm() {
+            const fileInput = document.getElementById('file');
+            const heartDisease = document.getElementById('heart_disease');
+            const smokingHistory = document.getElementById('smoking_history');
+            const submitBtn = document.getElementById('submitBtn');
+
+            submitBtn.disabled = !(fileInput.files.length > 0 && heartDisease.value && smokingHistory.value);
+        }
+
+        document.getElementById('file').addEventListener('change', validateForm);
+        document.getElementById('heart_disease').addEventListener('change', validateForm);
+        document.getElementById('smoking_history').addEventListener('change', validateForm);
+
+        // Reset results
+        function resetResults() {
+            document.getElementById('resultDiv').classList.add('hidden');
+            document.getElementById('resultDiv').classList.remove('red', 'orange', 'green');
+            document.getElementById('ollama-output').style.display = 'none';
+            document.getElementById('vitalsChartContainer').classList.add('hidden');
+            document.getElementById('confidenceChartContainer').classList.add('hidden');
+            document.getElementById('riskProfileChartContainer').classList.add('hidden');
+            document.getElementById('riskFactorChartContainer').classList.add('hidden');
+            document.getElementById('loadingSpinner').classList.add('hidden');
+        }
+
+        // Toggle guideline tables
+        function toggleGuideline(header) {
+            const table = header.nextElementSibling;
+            table.classList.toggle('visible');
+        }
+
+        // AJAX form submission
+        document.getElementById('analysisForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            resetResults();
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch('/analyze', { method: 'POST', body: formData });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned status ${response.status}`);
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const text = await response.text(); 
+                    console.error("Failed to parse JSON:", jsonError, "Raw response:", text);
+                    throw new Error("Server returned invalid JSON");
+                }
+
+                // If backend returned an error
+                if (data.error) {
+                    const resultDiv = document.getElementById('resultDiv');
+                    resultDiv.classList.remove('hidden');
+                    resultDiv.classList.add('red');
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                    return;
+                }
+
+                // Show risk result
+                const resultDiv = document.getElementById('resultDiv');
+                resultDiv.classList.remove('hidden', 'red', 'orange', 'green');
+                let colorClass = 'green';
+                if (data.risk_score.includes('Diabetes')) colorClass = 'red';
+                else if (data.risk_score.includes('Medium')) colorClass = 'orange';
+                resultDiv.classList.add(colorClass);
+                resultDiv.innerHTML = `<span>${data.risk_score}</span><br>${data.explanation}`;
+
+                // Show AI recommendations if returned
+                if (data.ollama) {
+                    const ollamaDiv = document.getElementById('ollama-output');
+                    ollamaDiv.style.display = 'block';
+                    ollamaDiv.textContent = data.ollama;
+                }
+
+            } catch (error) {
+                const resultDiv = document.getElementById('resultDiv');
+                resultDiv.classList.remove('hidden');
+                resultDiv.classList.add('red');
+                resultDiv.innerHTML = `Unexpected error: ${error.message}`;
+                console.error(error);
+            } finally {
+                document.getElementById('loadingSpinner').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
