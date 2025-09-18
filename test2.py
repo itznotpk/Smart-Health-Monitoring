@@ -856,6 +856,7 @@ html_page = """
                                 // Pass diagnosis data to chart init
                                 const diagnosisData = {{ diagnosis|tojson|safe }};
                                 initializeReportCharts(diagnosisData);
+                                updateDiagnosisTable(diagnosisData);
                             {% endif %}
                         });
                     </script>
@@ -1008,7 +1009,7 @@ html_page = """
                             <div class="metric-header">
                                 <div class="metric-icon" style="background: linear-gradient(135deg, #F6AD55, #ED8936);">⚡</div>
                                 <div>
-                                    <div class="metric-value" id="currentBMI">{{ current_bmi|round(1)|default('--') }}</div>
+                                    <div class="metric-value" id="currentBMI">--</div>
                                     <div class="metric-label">Current BMI</div>
                                 </div>
                             </div>
@@ -1021,7 +1022,7 @@ html_page = """
                             <div class="metric-header">
                                 <div class="metric-icon" style="background: linear-gradient(135deg, #9F7AEA, #805AD5);">🔍</div>
                                 <div>
-                                    <div class="metric-value" id="diabetesRisk">{{ prob|round(1)|default('--') }}%</div>
+                                    <div class="metric-value" id="diabetesRisk">--</div>
                                     <div class="metric-label">Diabetes Risk</div>
                                 </div>
                             </div>
@@ -1309,6 +1310,22 @@ html_page = """
             createRow('Hypertension', diagnosis.hypertension);
             if (diagnosis.glucose) createRow('Blood Glucose', diagnosis.glucose, true);
             if (diagnosis.hba1c) createRow('HbA1c Level', diagnosis.hba1c, false, true);
+        
+            // Update Current BMI in Performance tab
+            const currentBMIElement = document.getElementById('currentBMI');
+            if (diagnosis.bmi && diagnosis.bmi.value !== undefined) {
+                currentBMIElement.textContent = Math.round(diagnosis.bmi.value * 10) / 10;
+            } else {
+                currentBMIElement.textContent = '--';
+            }
+
+            // Update Diabetes Risk in Performance tab
+            const diabetesRiskElement = document.getElementById('diabetesRisk');
+            if (diagnosis.prob !== undefined) {
+                diabetesRiskElement.textContent = `${Math.round(diagnosis.prob * 10) / 10}%`;
+            } else {
+                diabetesRiskElement.textContent = '--';
+            }
         }
 
         // Initialize charts with backend data
@@ -1515,11 +1532,6 @@ html_page = """
             // Biomarker Progress Chart
             const biomarkerCtx = document.getElementById('biomarkerChart');
             if (biomarkerCtx && !Chart.getChart(biomarkerCtx)) {
-                const currentBMI = {{ diagnosis.bmi.value|default(23.5) }};
-                const currentHbA1c = {{ diagnosis.hba1c.value_percent|default(5.4) }};
-                const currentGlucose = {{ diagnosis.glucose.value_mg|default(95) }};
-                const currentHypertension = {{ (100 if diagnosis.hypertension.status in ['Hypertension Stage 1', 'Hypertension Stage 2'] else 0)|default(0) }};
-                
                 new Chart(biomarkerCtx, {
                     type: 'radar',
                     data: {
@@ -1527,14 +1539,7 @@ html_page = """
                         datasets: [
                             {
                                 label: 'Current',
-                                data: [
-                                    {{ (diagnosis.bmi.value / 40 * 100)|round(1)|default(85) }},
-                                    {{ (diagnosis.hba1c.value_percent / 6.3 * 100)|round(1)|default(92) }},
-                                    {{ (diagnosis.glucose.value_mg / (7.7 * 18.0) * 100)|round(1)|default(88) if diagnosis.glucose.category|default('Random') == 'Random' else (diagnosis.glucose.value_mg / (6.0 * 18.0) * 100)|round(1)|default(88) }},
-                                    currentHypertension,
-                                    90, // Static for Physical Activity
-                                    87  // Static for Diet Quality
-                                ],
+                                data: [85, 92, 88, 95, 90, 87],
                                 borderColor: '#4FD1C7',
                                 backgroundColor: 'rgba(79, 209, 199, 0.2)'
                             },
@@ -1559,9 +1564,9 @@ html_page = """
             // Monthly Comparison Chart
             const monthlyCtx = document.getElementById('monthlyComparisonChart');
             if (monthlyCtx && !Chart.getChart(monthlyCtx)) {
-                const currentBMI = {{ diagnosis.bmi.value|default(23.5) }};
-                const currentHbA1c = {{ diagnosis.hba1c.value_percent|default(5.4) }};
-                const currentGlucose = {{ diagnosis.glucose.value_mg|default(95) }};
+                const currentBMI = currentDiagnosisData ? currentDiagnosisData.bmi.value : 23.5;
+                const currentHbA1c = currentDiagnosisData ? currentDiagnosisData.hba1c.value_percent : 5.4;
+                const currentGlucose = currentDiagnosisData ? currentDiagnosisData.glucose.value_mg : 95;
                 
                 new Chart(monthlyCtx, {
                     type: 'bar',
@@ -1570,7 +1575,7 @@ html_page = """
                         datasets: [
                             {
                                 label: 'Last Month',
-                                data: [{{ (diagnosis.bmi.value + 0.6)|default(24.1) }}, {{ (diagnosis.hba1c.value_percent + 0.1)|default(5.5) }}, {{ (diagnosis.glucose.value_mg + 1)|default(96) }}],
+                                data: [currentBMI + 0.6, currentHbA1c + 0.1, currentGlucose + 1],
                                 backgroundColor: '#CBD5E0'
                             },
                             {
@@ -1933,7 +1938,7 @@ def home():
         Based on Malaysian clinical guidelines, explain the risk status and give personalized health advice.
         """
 
-    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob, current_bmi=bmi_value)
+    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
 @app.route('/stream_recommendation')
 def stream_recommendation():
