@@ -473,47 +473,82 @@ html_page = """
             color: #2D3748;
         }
 
+         .guidelines-container {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            justify-content: space-between;
+        }
+
         .guideline-section {
+            flex: 1;
+            min-width: 0;
+            max-width: 24%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            padding: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
 
         .guideline-header {
             cursor: pointer;
-            padding: 1rem;
+            padding: 0.75rem;
             background: linear-gradient(135deg, #2D3748 0%, #4A5568 100%);
-            color: white;
-            border-radius: 12px;
+            color: #FFFFFF;
+            border-radius: 8px;
             font-weight: 600;
+            text-align: center;
             transition: all 0.3s ease;
-            margin: 0;
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
         }
 
         .guideline-header:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px rgba(45, 55, 72, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(45, 55, 72, 0.4);
         }
 
         .guideline-table {
             max-height: 0;
             opacity: 0;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: max-height 0.4s ease, opacity 0.3s ease;
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.8rem;
         }
 
         .guideline-table.visible {
-            max-height: 500px;
+            max-height: 400px;
             opacity: 1;
-            margin-top: 1rem;
+            margin-top: 0.5rem;
         }
 
-        .loading-spinner {
-            text-align: center;
-            padding: 2rem;
-            color: #4A5568;
+        .guideline-table th,
+        .guideline-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #E2E8F0;
+            font-size: 0.8rem;
+        }
+
+        .guideline-table th {
+            background: #F7FAFC;
+            font-weight: 600;
+            color: #2D3748;
+        }
+
+        @media (max-width: 768px) {
+            .guidelines-container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .guideline-section {
+                max-width: 100%;
+            }
         }
 
         .spinner {
@@ -707,10 +742,10 @@ html_page = """
     <div class="main-container">
         <div class="main-content">
             <div class="header">
-                <h1>Hello, Patient! Your Health Report</h1>
-                <p class="header-subtitle">MyCaringBot - Health History Analysis</p>
+                <img src="/static/mycaring_logo.png" alt="MyCaring Logo" style="display:block; margin:0; max-width:180px; position:relative; top:0; z-index:1;">
+                <h1 style="margin-top:-20px; position:relative; z-index:2;">Hello, Patient! Your Health Report</h1>
+                <p class="header-subtitle" style="margin-top:-10px; position:relative; z-index:2;">MyCaringBot - Health History Analysis</p>
             </div>
-
             <!-- Tab Navigation -->
             <div class="tab-navigation">
                 <button class="tab-button active" onclick="switchTab('report-tab', this)">
@@ -817,6 +852,11 @@ html_page = """
                             {% if result %}
                                 startStreaming();
                             {% endif %}
+                            {% if diagnosis %}
+                                // Pass diagnosis data to chart init
+                                const diagnosisData = {{ diagnosis|tojson|safe }};
+                                initializeReportCharts(diagnosisData);
+                            {% endif %}
                         });
                     </script>
                     {% endif %}
@@ -856,7 +896,15 @@ html_page = """
                             <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
                             {% for key, metric in diagnosis.items() %}
                             <tr>
-                                <td>{{ metric.name if metric.name else key|capitalize }}</td>
+                                <td>
+                                    {% if key == 'heart_disease' %}
+                                        Heart Diseases
+                                    {% elif key == 'smoking_history' %}
+                                        Smoking History
+                                    {% else %}
+                                        {{ metric.name if metric.name else key|capitalize|replace('_', ' ') }}
+                                    {% endif %}
+                                </td>
                                 <td>{{ metric.value }}</td>
                                 <td>{{ metric.unit }}</td>
                                 <td class="{{ metric.color }}">{{ metric.status }}</td>
@@ -867,15 +915,52 @@ html_page = """
                     {% endif %}
 
                     <!-- Guidelines Section -->
-                    <div class="guideline-section">
-                        <h3 class="guideline-header" onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
-                        <table class="guideline-table">
-                            <tr><th>Status</th><th>Range</th></tr>
-                            <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
-                            <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
-                            <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
-                            <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
-                        </table>
+                    <div class="main-container">
+                        <div class="main-content">
+                            <!-- ... (keep all existing content up to guidelines-container) -->
+                            <div class="guidelines-container">
+                                <div class="guideline-section">
+                                    <h3 class="guideline-header" onclick="toggleGuideline(this)">Hypertension Benchmarks (mmHg)</h3>
+                                    <table class="guideline-table">
+                                        <tr><th>Status</th><th>Range</th></tr>
+                                        <tr><td>Normal</td><td>&lt;120/&lt;80</td></tr>
+                                        <tr><td>Elevated/Prehypertension</td><td>120-139/80-89</td></tr>
+                                        <tr><td>Hypertension Stage 1</td><td>140-159/90-99</td></tr>
+                                        <tr><td>Hypertension Stage 2</td><td>&ge;160/&ge;100</td></tr>
+                                    </table>
+                                </div>
+                                <div class="guideline-section">
+                                    <h3 class="guideline-header" onclick="toggleGuideline(this)">Glucose Benchmarks (mmol/L)</h3>
+                                    <table class="guideline-table">
+                                        <tr><th>Category</th><th>Normal</th><th>Prediabetes</th><th>T2DM Diagnosis</th></tr>
+                                        <tr><td>Fasting</td><td>3.9-6.0</td><td>6.1-6.9</td><td>&ge;7.0</td></tr>
+                                        <tr><td>Random</td><td>3.9-7.7</td><td>7.8-11.0</td><td>&ge;11.1</td></tr>
+                                    </table>
+                                </div>
+                                <div class="guideline-section">
+                                    <h3 class="guideline-header" onclick="toggleGuideline(this)">HbA1c Benchmarks</h3>
+                                    <table class="guideline-table">
+                                        <tr><th>Status</th><th>%</th><th>mmol/mol</th></tr>
+                                        <tr><td>Normal</td><td>&lt;5.7</td><td>&lt;39</td></tr>
+                                        <tr><td>Prediabetes</td><td>5.7-6.2</td><td>39-44</td></tr>
+                                        <tr><td>Diabetes</td><td>&ge;6.3</td><td>&ge;45</td></tr>
+                                    </table>
+                                </div>
+                                <div class="guideline-section">
+                                    <h3 class="guideline-header" onclick="toggleGuideline(this)">BMI Benchmarks (kg/m²)</h3>
+                                    <table class="guideline-table">
+                                        <tr><th>Status</th><th>Range</th></tr>
+                                        <tr><td>Underweight</td><td>&lt;18.5</td></tr>
+                                        <tr><td>Normal range</td><td>18.5-24.9</td></tr>
+                                        <tr><td>Overweight</td><td>&ge;25.0</td></tr>
+                                        <tr><td>Pre-obese</td><td>25.0-29.9</td></tr>
+                                        <tr><td>Obese class I</td><td>30.0-34.9</td></tr>
+                                        <tr><td>Obese class II</td><td>35.0-39.9</td></tr>
+                                        <tr><td>Obese class III</td><td>&ge;40.0</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Add other guideline tables similarly -->
@@ -923,7 +1008,7 @@ html_page = """
                             <div class="metric-header">
                                 <div class="metric-icon" style="background: linear-gradient(135deg, #F6AD55, #ED8936);">⚡</div>
                                 <div>
-                                    <div class="metric-value" id="currentBMI">--</div>
+                                    <div class="metric-value" id="currentBMI">{{ current_bmi|round(1)|default('--') }}</div>
                                     <div class="metric-label">Current BMI</div>
                                 </div>
                             </div>
@@ -936,7 +1021,7 @@ html_page = """
                             <div class="metric-header">
                                 <div class="metric-icon" style="background: linear-gradient(135deg, #9F7AEA, #805AD5);">🔍</div>
                                 <div>
-                                    <div class="metric-value" id="diabetesRisk">--</div>
+                                    <div class="metric-value" id="diabetesRisk">{{ prob|round(1)|default('--') }}%</div>
                                     <div class="metric-label">Diabetes Risk</div>
                                 </div>
                             </div>
@@ -1260,34 +1345,33 @@ html_page = """
                 });
             }
 
-            // Confidence Chart - This would come from your ML model prediction
-            const confidenceCtx = document.getElementById('confidenceChart');
-            if (confidenceCtx) {
-                const riskPercentage = 5.2; // This should come from your backend
-                new Chart(confidenceCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Diabetes Risk', 'Normal'],
-                        datasets: [{
-                            data: [riskPercentage, 100 - riskPercentage],
-                            backgroundColor: ['#FC8181', '#68D391'],
-                            borderColor: '#FFFFFF',
-                            borderWidth: 3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
+            // Confidence Chart
+            const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
+            const probMatch = '{{ result }}'.match(/Probability of Diabetes: (\d+\.\d)%/);
+            const diabetesProb = probMatch ? parseFloat(probMatch[1]) : 0;
+            new Chart(confidenceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Diabetes Risk', 'Normal'],
+                    datasets: [{
+                        data: [diabetesProb, 100 - diabetesProb],
+                        backgroundColor: ['#FC8181', '#68D391'],
+                        borderColor: '#FFFFFF',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom'}
                     }
-                });
-            }
+                }
+            });
 
             // Risk Profile Chart
-            const riskProfileCtx = document.getElementById('riskProfileChart');
+            const riskProfileCtx = document.getElementById('riskProfileChart').getContext('2d');
             if (riskProfileCtx) {
                 new Chart(riskProfileCtx, {
                     type: 'radar',
@@ -1296,16 +1380,24 @@ html_page = """
                         datasets: [{
                             label: 'Your Health Profile',
                             data: [
-                                diagnosis.bmi ? (diagnosis.bmi.value > 25 ? 80 : 58) : 0,
-                                diagnosis.glucose ? (diagnosis.glucose.value_mg > 100 ? 70 : 53) : 0,
-                                diagnosis.hba1c ? (diagnosis.hba1c.value_percent > 5.7 ? 75 : 52) : 0,
-                                diagnosis.hypertension && diagnosis.hypertension.value === 'Yes' ? 85 : 0,
-                                diagnosis.heart_disease && diagnosis.heart_disease.value === 'Yes' ? 90 : 0,
-                                diagnosis.smoking_history && diagnosis.smoking_history.value !== 'never' ? 70 : 0
+                                {{ (diagnosis.bmi.value / 40 * 100) | round(1) if 'bmi' in diagnosis else 0 }},
+                                {{ (diagnosis.glucose.value_mg / (7.7 * 18.0) * 100) | round(1) if 'glucose' in diagnosis and diagnosis.glucose.category == 'Random' else (diagnosis.glucose.value_mg / (6.0 * 18.0) * 100) | round(1) if 'glucose' in diagnosis else 0 }},
+                                {{ (diagnosis.hba1c.value_percent / 6.3 * 100) | round(1) if 'hba1c' in diagnosis else 0 }},
+                                {{ 100 if 'hypertension' in diagnosis and diagnosis.hypertension.status in ['Hypertension Stage 1', 'Hypertension Stage 2'] else 0 }},
+                                {{ 100 if 'heart_disease' in diagnosis and diagnosis.heart_disease.status == 'Yes' else 0 }},
+                                {{ 0 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status == 'Never' else 50 if 'smoking_history' in diagnosis and diagnosis.smoking_history.status in ['Former', 'Not Current'] else 100 if 'smoking_history' in diagnosis else 0 }}
                             ],
                             backgroundColor: 'rgba(79, 209, 199, 0.2)',
                             borderColor: '#4FD1C7',
-                            borderWidth: 2
+                            borderWidth: 2,
+                            pointBackgroundColor: [
+                                '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.bmi.color if 'bmi' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                                '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.glucose.color if 'glucose' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                                '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hba1c.color if 'hba1c' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                                '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.hypertension.color if 'hypertension' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '#D04848',
+                                '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.heart_disease.color if 'heart_disease' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#F4A261',
+                                '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'green' ? '#9ED048' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'orange' ? '#F4A261' : '{{ diagnosis.smoking_history.color if 'smoking_history' in diagnosis else 'black' }}' === 'red' ? '#D04848' : '#3B3C50'
+                            ]
                         }]
                     },
                     options: {
@@ -1314,6 +1406,26 @@ html_page = """
                         plugins: { legend: { display: false } },
                         scales: {
                             r: { beginAtZero: true, max: 100 }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#3B3C50', font: { size: 14 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label;
+                                        const value = context.raw;
+                                        const statuses = {
+                                            'BMI': '{{ diagnosis.bmi.status if 'bmi' in diagnosis else 'Not Available' }}',
+                                            'Blood Glucose': '{{ diagnosis.glucose.status if 'glucose' in diagnosis else 'Not Available' }}',
+                                            'HbA1c': '{{ diagnosis.hba1c.status if 'hba1c' in diagnosis else 'Not Available' }}',
+                                            'Hypertension': '{{ diagnosis.hypertension.status if 'hypertension' in diagnosis else 'Not Available' }}',
+                                            'Heart Disease': '{{ diagnosis.heart_disease.status if 'heart_disease' in diagnosis else 'Not Available' }}',
+                                            'Smoking History': '{{ diagnosis.smoking_history.status if 'smoking_history' in diagnosis else 'Not Available' }}'
+                                        };
+                                        return `${label}: ${value}% (Status: ${statuses[label]})`;
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -1403,6 +1515,11 @@ html_page = """
             // Biomarker Progress Chart
             const biomarkerCtx = document.getElementById('biomarkerChart');
             if (biomarkerCtx && !Chart.getChart(biomarkerCtx)) {
+                const currentBMI = {{ diagnosis.bmi.value|default(23.5) }};
+                const currentHbA1c = {{ diagnosis.hba1c.value_percent|default(5.4) }};
+                const currentGlucose = {{ diagnosis.glucose.value_mg|default(95) }};
+                const currentHypertension = {{ (100 if diagnosis.hypertension.status in ['Hypertension Stage 1', 'Hypertension Stage 2'] else 0)|default(0) }};
+                
                 new Chart(biomarkerCtx, {
                     type: 'radar',
                     data: {
@@ -1410,7 +1527,14 @@ html_page = """
                         datasets: [
                             {
                                 label: 'Current',
-                                data: [85, 92, 88, 95, 90, 87],
+                                data: [
+                                    {{ (diagnosis.bmi.value / 40 * 100)|round(1)|default(85) }},
+                                    {{ (diagnosis.hba1c.value_percent / 6.3 * 100)|round(1)|default(92) }},
+                                    {{ (diagnosis.glucose.value_mg / (7.7 * 18.0) * 100)|round(1)|default(88) if diagnosis.glucose.category|default('Random') == 'Random' else (diagnosis.glucose.value_mg / (6.0 * 18.0) * 100)|round(1)|default(88) }},
+                                    currentHypertension,
+                                    90, // Static for Physical Activity
+                                    87  // Static for Diet Quality
+                                ],
                                 borderColor: '#4FD1C7',
                                 backgroundColor: 'rgba(79, 209, 199, 0.2)'
                             },
@@ -1435,9 +1559,9 @@ html_page = """
             // Monthly Comparison Chart
             const monthlyCtx = document.getElementById('monthlyComparisonChart');
             if (monthlyCtx && !Chart.getChart(monthlyCtx)) {
-                const currentBMI = currentDiagnosisData ? currentDiagnosisData.bmi.value : 23.5;
-                const currentHbA1c = currentDiagnosisData ? currentDiagnosisData.hba1c.value_percent : 5.4;
-                const currentGlucose = currentDiagnosisData ? currentDiagnosisData.glucose.value_mg : 95;
+                const currentBMI = {{ diagnosis.bmi.value|default(23.5) }};
+                const currentHbA1c = {{ diagnosis.hba1c.value_percent|default(5.4) }};
+                const currentGlucose = {{ diagnosis.glucose.value_mg|default(95) }};
                 
                 new Chart(monthlyCtx, {
                     type: 'bar',
@@ -1446,7 +1570,7 @@ html_page = """
                         datasets: [
                             {
                                 label: 'Last Month',
-                                data: [currentBMI + 0.6, currentHbA1c + 0.1, currentGlucose + 1],
+                                data: [{{ (diagnosis.bmi.value + 0.6)|default(24.1) }}, {{ (diagnosis.hba1c.value_percent + 0.1)|default(5.5) }}, {{ (diagnosis.glucose.value_mg + 1)|default(96) }}],
                                 backgroundColor: '#CBD5E0'
                             },
                             {
@@ -1513,30 +1637,31 @@ html_page = """
 def home():
     result, color, explanation, error = None, None, None, None
     diagnosis = {}
+    prob = 0  # Initialize prob with a default value
 
     if request.method == "POST":
         if 'file' not in request.files:
             error = "No file part"
-            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
         file = request.files['file']
         if file.filename == '':
             error = "No selected file"
-            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
         heart_disease = request.form.get('heart_disease')
         smoking_history = request.form.get('smoking_history')
 
         if not heart_disease or not smoking_history:
             error = "Please select options for Heart Disease and Smoking History."
-            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+            return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
         if file and allowed_file(file.filename):
             file.seek(0, 2)
             file_size = file.tell()
             if file_size > app.config['MAX_CONTENT_LENGTH']:
                 error = "File too large. Maximum size is 10MB."
-                return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+                return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
             file.seek(0)  # Reset file pointer
 
             filename = secure_filename(file.filename)
@@ -1556,7 +1681,7 @@ def home():
 
                 if not text.strip():
                     error = "No text found in the PDF."
-                    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+                    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
                 # Add user inputs to diagnosis
                 diagnosis['heart_disease'] = {
@@ -1736,7 +1861,7 @@ def home():
                 missing = [field for field in required_fields if field not in diagnosis]
                 if missing:
                     error = f"Missing required data in the report for prediction: {', '.join(missing)}. Please ensure the PDF contains age, gender, BMI, blood pressure, blood glucose level, and HbA1c level."
-                    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+                    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob)
 
                 # Prepare input for model
                 gender = diagnosis['sex']['value']
@@ -1766,7 +1891,7 @@ def home():
                 # Predict
                 sample_pred_proba = model.predict(input_preprocessed, verbose=0)
                 sample_pred = (sample_pred_proba > 0.5).astype(int)[0]
-                prob = sample_pred_proba[0][0] * 100
+                prob = sample_pred_proba[0][0] * 100  # Assign prob here
                 risk = "Diabetes" if sample_pred == 1 else "Normal"
                 logger.debug(f"Prediction: {risk}, Probability: {prob:.1f}%")
 
@@ -1808,7 +1933,7 @@ def home():
         Based on Malaysian clinical guidelines, explain the risk status and give personalized health advice.
         """
 
-    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis)
+    return render_template_string(html_page, result=result, color=color, explanation=explanation, error=error, diagnosis=diagnosis, prob=prob, current_bmi=bmi_value)
 
 @app.route('/stream_recommendation')
 def stream_recommendation():
