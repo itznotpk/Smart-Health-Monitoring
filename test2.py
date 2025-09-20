@@ -1800,6 +1800,16 @@ def home():
                         'color': ''
                     }
 
+                    diagnosis['glucose'] = {
+                        'value': f"{glucose_value_mmol:.1f}",  # Display in mmol/L by default
+                        'unit': 'mmol/L',
+                        'value_mmol': glucose_value_mmol,
+                        'value_mg': glucose_value_mg,
+                        'category': category,
+                        'status': diagnosis['glucose']['status'],  # Preserve existing status
+                        'color': diagnosis['glucose']['color']    # Preserve existing color
+                    }
+
                     if category == 'Fasting':
                         if glucose_value_mmol < 3.9:
                             diagnosis['glucose']['status'] = 'Hypoglycemia'
@@ -1849,6 +1859,16 @@ def home():
                         'value_mmol': hba1c_value_mmol,
                         'status': '',
                         'color': ''
+                    }
+
+                    # Add the new snippet here to include 'value' and 'unit'
+                    diagnosis['hba1c'] = {
+                        'value': f"{hba1c_value_percent:.1f}",  # Display as % by default
+                        'unit': '%',
+                        'value_percent': hba1c_value_percent,
+                        'value_mmol': hba1c_value_mmol,
+                        'status': diagnosis['hba1c']['status'],  # Preserve existing status
+                        'color': diagnosis['hba1c']['color']    # Preserve existing color
                     }
 
                     if hba1c_value_percent < 5.7:
